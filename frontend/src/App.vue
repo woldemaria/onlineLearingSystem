@@ -20,15 +20,15 @@ import CartDrawer from '@/components/cart/CartDrawer.vue';
 
 const route = useRoute();
 
-const isAuthPage = computed(() => {
-  return route.name === 'Login' || route.name === 'Register';
+const isFullScreenPage = computed(() => {
+  return route.name === 'Login' || route.name === 'Register' || route.name === 'NotFound';
 });
 
 const isPlayerOrLiveRoom = computed(() => {
-  return route.name === 'CoursePlayer' || route.name === 'LiveVirtualClassroom' || isAuthPage.value;
+  return route.name === 'CoursePlayer' || route.name === 'LiveVirtualClassroom' || isFullScreenPage.value;
 });
 
 const isLiveRoom = computed(() => {
-  return route.name === 'LiveVirtualClassroom' || isAuthPage.value;
+  return route.name === 'LiveVirtualClassroom' || isFullScreenPage.value;
 });
 </script>

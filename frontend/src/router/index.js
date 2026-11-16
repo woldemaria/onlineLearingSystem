@@ -11,6 +11,9 @@ import CertificateVerification from '@/pages/CertificateVerification.vue';
 import CareerResources from '@/pages/CareerResources.vue';
 import AdminUsers from '@/pages/AdminUsers.vue';
 import Login from '@/pages/Login.vue';
+import AboutUs from '@/pages/AboutUs.vue';
+import ContactUs from '@/pages/ContactUs.vue';
+import NotFound from '@/pages/NotFound.vue';
 
 const routes = [
   { path: '/', name: 'Home', component: Home },
@@ -25,8 +28,11 @@ const routes = [
   { path: '/instructor', name: 'InstructorStudio', component: InstructorStudio },
   { path: '/admin/users', name: 'AdminUsers', component: AdminUsers },
   { path: '/verify/:code?', name: 'CertificateVerification', component: CertificateVerification },
+  { path: '/about', name: 'AboutUs', component: AboutUs },
+  { path: '/contact', name: 'ContactUs', component: ContactUs },
   { path: '/login', name: 'Login', component: Login },
   { path: '/register', name: 'Register', component: Login },
+  { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound },
 ];
 
 const router = createRouter({

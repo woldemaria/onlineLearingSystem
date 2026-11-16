@@ -35,6 +35,7 @@ Route::middleware('api.auth')->group(function () {
     Route::post('/lessons/{id}/complete', [LearningController::class, 'completeLesson']);
     Route::post('/financial-aid', [LearningController::class, 'financialAid']);
     Route::post('/assignments/submit', [LearningController::class, 'submitAssignment']);
+    Route::post('/courses/{slug}/reviews', [CourseCatalogController::class, 'addReview']);
 });
 
 // Online Global Classrooms (Live 25-Min Immersion, Packages, & Placement Test)

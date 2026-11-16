@@ -33,10 +33,10 @@
         <div>
           <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-4">Global Network</h4>
           <ul class="space-y-2.5 text-sm">
-            <li><a href="#" class="hover:text-white transition-colors">Stanford Online Lab</a></li>
-            <li><a href="#" class="hover:text-white transition-colors">MITx MicroMasters</a></li>
-            <li><a href="#" class="hover:text-white transition-colors">Online Global Classroom HQ</a></li>
-            <li><a href="#" class="hover:text-white transition-colors">14+ Languages Immersion</a></li>
+            <li><router-link to="/about" class="hover:text-white transition-colors">About Consortium</router-link></li>
+            <li><router-link to="/contact" class="hover:text-white transition-colors">Contact & 24/7 Care</router-link></li>
+            <li><router-link to="/global-classroom" class="hover:text-white transition-colors">Online Global Classroom HQ</router-link></li>
+            <li><router-link to="/global-classroom" class="hover:text-white transition-colors">14+ Languages Immersion</router-link></li>
           </ul>
         </div>
 

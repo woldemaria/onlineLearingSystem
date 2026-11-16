@@ -203,6 +203,12 @@
             >
               Downloadable Files (3)
             </button>
+            <button
+              @click="activeTab = 'reviews'"
+              :class="activeTab === 'reviews' ? 'text-indigo-400 border-b-2 border-indigo-400 pb-3 -mb-3' : 'text-slate-400 hover:text-white'"
+            >
+              Reviews & Feedback
+            </button>
           </div>
 
           <!-- Overview Tab -->
@@ -505,6 +511,74 @@
               >
                 Download
               </button>
+            </div>
+          </div>
+
+          <!-- Reviews & Course Feedback Tab -->
+          <div v-if="activeTab === 'reviews'" class="space-y-6">
+            <!-- Review Submission Form -->
+            <div class="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-3 text-xs">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="font-bold text-white text-sm">Course Feedback & Review</h4>
+                  <p class="text-slate-400 text-[11px]">Share your rating and comment to help other global students</p>
+                </div>
+                <div class="flex items-center gap-1">
+                  <button
+                    v-for="s in 5"
+                    :key="s"
+                    type="button"
+                    @click="newReviewRating = s"
+                    class="text-xl hover:scale-125 transition-transform"
+                    :class="s <= newReviewRating ? 'text-amber-400' : 'text-slate-600'"
+                  >
+                    ★
+                  </button>
+                  <span class="text-xs font-bold text-slate-300 ml-1">{{ newReviewRating }}.0</span>
+                </div>
+              </div>
+
+              <textarea
+                v-model="newReviewComment"
+                rows="3"
+                placeholder="Write your review and comment about the lectures, curriculum, and instructor..."
+                class="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-xs"
+              ></textarea>
+
+              <div class="flex justify-end">
+                <button
+                  @click="submitPlayerReview"
+                  :disabled="submittingReview || !newReviewComment.trim()"
+                  class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition-colors shadow-md flex items-center gap-2"
+                >
+                  <span v-if="submittingReview" class="animate-spin text-xs">⏳</span>
+                  <span>{{ submittingReview ? 'Submitting...' : 'Post Course Review' }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Reviews List -->
+            <div class="space-y-3">
+              <div
+                v-for="(rev, idx) in (course?.reviews || [])"
+                :key="idx"
+                class="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-2 text-xs"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2.5">
+                    <img :src="rev.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'" class="w-7 h-7 rounded-full object-cover" />
+                    <div>
+                      <span class="font-bold text-white block">{{ rev.author }}</span>
+                      <span class="text-[10px] text-emerald-400">✓ Enrolled Student</span>
+                    </div>
+                  </div>
+                  <span class="text-amber-400 font-bold">★ {{ rev.rating }}.0</span>
+                </div>
+                <p class="text-slate-300 leading-relaxed">{{ rev.comment }}</p>
+                <div class="text-[10px] text-slate-500 pt-1 border-t border-slate-800/80">
+                  {{ rev.date }}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -871,6 +945,36 @@ function handlePlayerKeydown(e) {
     } else {
       document.exitFullscreen?.();
     }
+  }
+}
+
+// Course Review & Comments in Player
+const newReviewRating = ref(5);
+const newReviewComment = ref('');
+const submittingReview = ref(false);
+
+async function submitPlayerReview() {
+  if (!course.value || !newReviewComment.value.trim()) return;
+  submittingReview.value = true;
+  try {
+    const res = await courseStore.addCourseReview(course.value.slug, {
+      rating: newReviewRating.value,
+      comment: newReviewComment.value.trim(),
+    });
+    if (res && res.review) {
+      if (!Array.isArray(course.value.reviews)) {
+        course.value.reviews = [];
+      }
+      course.value.reviews.unshift(res.review);
+      newReviewComment.value = '';
+      newReviewRating.value = 5;
+      alert('🌟 Your review and rating have been posted to the course!');
+    }
+  } catch (err) {
+    console.error('Failed to submit review:', err);
+    alert(err?.response?.data?.message || 'Failed to submit review.');
+  } finally {
+    submittingReview.value = false;
   }
 }
 

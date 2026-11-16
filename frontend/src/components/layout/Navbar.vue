@@ -106,6 +106,20 @@
           </router-link>
 
           <router-link
+            to="/about"
+            class="text-xs font-bold text-slate-700 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors hidden 2xl:block"
+          >
+            About
+          </router-link>
+
+          <router-link
+            to="/contact"
+            class="text-xs font-bold text-slate-700 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors hidden 2xl:block"
+          >
+            Contact
+          </router-link>
+
+          <router-link
             to="/instructor"
             class="text-xs font-bold text-indigo-600 hover:text-indigo-700 px-3 py-2 rounded-lg hover:bg-indigo-50 transition-colors hidden xl:block"
           >

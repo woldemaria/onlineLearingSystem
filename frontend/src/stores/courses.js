@@ -147,6 +147,14 @@ export const useCourseStore = defineStore('courses', () => {
     return wishlist.value.some(c => c.id === courseId);
   }
 
+  async function addCourseReview(slug, reviewData) {
+    const token = localStorage.getItem('gelme_auth_token');
+    const res = await axios.post(`/api/courses/${slug}/reviews`, reviewData, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return res.data;
+  }
+
   return {
     courses,
     currentCourse,
@@ -165,6 +173,7 @@ export const useCourseStore = defineStore('courses', () => {
     completeLesson,
     applyFinancialAid,
     submitAssignment,
+    addCourseReview,
     toggleWishlist,
     isInWishlist,
   };

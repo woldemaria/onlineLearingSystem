@@ -102,7 +102,7 @@ class CourseCatalogController extends Controller
     public function show(Request $request, $slug)
     {
         $course = Course::where('slug', $slug)
-            ->with(['category', 'institution', 'creator.profile', 'modules.lessons'])
+            ->with(['category', 'institution', 'creator.profile', 'modules.lessons', 'reviews.user.profile'])
             ->firstOrFail();
 
         $ratingBreakdown = [
@@ -256,29 +256,79 @@ class CourseCatalogController extends Controller
                         ]
                     ]
                 ],
-                'reviews' => [
-                    [
-                        'author' => 'Michael Chang',
-                        'avatar' => 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-                        'rating' => 5,
-                        'date' => '3 days ago',
-                        'comment' => 'One of the best structured courses I have ever taken. The combination of self-paced on-demand videos and live classroom immersion helped me land a senior position!'
-                    ],
-                    [
-                        'author' => 'Fatima Al-Mansoor',
-                        'avatar' => 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
-                        'rating' => 5,
-                        'date' => '1 week ago',
-                        'comment' => 'The verifiable certificate from Stanford Online and GELME was directly verified by my employer during hiring. Outstanding curriculum and interactive labs.'
-                    ],
-                    [
-                        'author' => 'Lucas Bernard',
-                        'avatar' => 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
-                        'rating' => 5,
-                        'date' => '2 weeks ago',
-                        'comment' => 'The 25-minute native immersion lessons are revolutionary. Speaking directly with certified native teachers accelerated my conversational fluency faster than any app.'
+                'reviews' => $course->reviews->isNotEmpty()
+                    ? $course->reviews->map(function ($rev) {
+                        return [
+                            'id' => $rev->id,
+                            'author' => $rev->user?->name ?? 'Verified Learner',
+                            'avatar' => $rev->user?->profile?->avatar_path ?? ('https://ui-avatars.com/api/?name=' . urlencode($rev->user?->name ?? 'Learner') . '&background=6366f1&color=fff&bold=true'),
+                            'rating' => (int) $rev->rating,
+                            'date' => $rev->created_at->diffForHumans(),
+                            'comment' => $rev->comment,
+                            'helpful_count' => (int) ($rev->helpful_count ?? 0),
+                        ];
+                    })->values()->all()
+                    : [
+                        [
+                            'id' => 1,
+                            'author' => 'Michael Chang',
+                            'avatar' => 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
+                            'rating' => 5,
+                            'date' => '3 days ago',
+                            'comment' => 'One of the best structured courses I have ever taken. The combination of self-paced on-demand videos and live classroom immersion helped me land a senior position!',
+                            'helpful_count' => 18,
+                        ],
+                        [
+                            'id' => 2,
+                            'author' => 'Fatima Al-Mansoor',
+                            'avatar' => 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
+                            'rating' => 5,
+                            'date' => '1 week ago',
+                            'comment' => 'The verifiable certificate from Stanford Online and GELME was directly verified by my employer during hiring. Outstanding curriculum and interactive labs.',
+                            'helpful_count' => 12,
+                        ],
+                        [
+                            'id' => 3,
+                            'author' => 'Lucas Bernard',
+                            'avatar' => 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
+                            'rating' => 5,
+                            'date' => '2 weeks ago',
+                            'comment' => 'The 25-minute native immersion lessons are revolutionary. Speaking directly with certified native teachers accelerated my conversational fluency faster than any app.',
+                            'helpful_count' => 9,
+                        ]
                     ]
-                ]
+            ]
+        ]);
+    }
+
+    public function addReview(Request $request, $slug)
+    {
+        $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'comment' => 'required|string|min:3|max:2000',
+        ]);
+
+        $course = Course::where('slug', $slug)->firstOrFail();
+        $user = $request->user();
+
+        $review = \App\Models\CourseReview::updateOrCreate(
+            ['course_id' => $course->id, 'user_id' => $user->id],
+            [
+                'rating' => $request->rating,
+                'comment' => $request->comment,
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Review submitted successfully!',
+            'review' => [
+                'id' => $review->id,
+                'author' => $user->name,
+                'avatar' => $user->profile?->avatar_path ?? ('https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=6366f1&color=fff&bold=true'),
+                'rating' => (int) $review->rating,
+                'date' => 'Just now',
+                'comment' => $review->comment,
+                'helpful_count' => (int) $review->helpful_count,
             ]
         ]);
     }

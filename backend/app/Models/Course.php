@@ -104,6 +104,11 @@ class Course extends Model
         return $this->hasMany(Enrollment::class);
     }
 
+    public function reviews(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CourseReview::class)->latest();
+    }
+
     public function lessons(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
     {
         return $this->hasManyThrough(Lesson::class, CourseModule::class, 'course_id', 'module_id');

@@ -252,6 +252,61 @@
               </div>
             </div>
 
+            <!-- Write a Review Form -->
+            <div class="pt-6 border-t border-slate-100">
+              <div v-if="authStore.isAuthenticated" class="p-5 rounded-2xl bg-indigo-50/50 border border-indigo-100 space-y-3">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-sm font-bold text-slate-900">Leave a Review & Rating</h4>
+                  <!-- Star Selector -->
+                  <div class="flex items-center gap-1">
+                    <button
+                      v-for="star in 5"
+                      :key="star"
+                      type="button"
+                      @click="newReviewRating = star"
+                      class="text-lg transition-transform hover:scale-125 focus:outline-none"
+                      :class="star <= newReviewRating ? 'text-amber-400' : 'text-slate-300'"
+                    >
+                      ★
+                    </button>
+                    <span class="text-xs font-bold text-slate-600 ml-1.5">{{ newReviewRating }}.0 / 5.0</span>
+                  </div>
+                </div>
+
+                <textarea
+                  v-model="newReviewComment"
+                  rows="3"
+                  placeholder="Share your learning experience, key takeaways, instructor feedback, or course outcomes..."
+                  class="w-full p-3 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                ></textarea>
+
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] text-slate-500">Your review will be verified and published publicly</span>
+                  <button
+                    @click="submitCourseReview"
+                    :disabled="submittingReview || !newReviewComment.trim()"
+                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition-colors shadow-sm flex items-center gap-1.5"
+                  >
+                    <span v-if="submittingReview" class="animate-spin text-xs">⏳</span>
+                    <span>{{ submittingReview ? 'Publishing...' : 'Publish Review' }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div v-else class="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                <div>
+                  <h4 class="text-xs font-bold text-slate-900">Have you taken or explored this course?</h4>
+                  <p class="text-[11px] text-slate-500">Sign in to leave a comment and share your feedback with the community.</p>
+                </div>
+                <router-link
+                  :to="{ path: '/login', query: { redirect: `/courses/${course.slug}` } }"
+                  class="px-4 py-2 bg-white hover:bg-slate-100 text-slate-900 font-bold border border-slate-200 rounded-xl text-xs shadow-sm transition-colors"
+                >
+                  Sign In to Review
+                </router-link>
+              </div>
+            </div>
+
             <!-- Reviews Feed -->
             <div class="pt-6 border-t border-slate-100 space-y-4">
               <div
@@ -613,6 +668,36 @@ async function submitFinancialAid() {
     financialAidModalOpen.value = false;
   } finally {
     faSubmitting.value = false;
+  }
+}
+
+// Course Review & Comments
+const newReviewRating = ref(5);
+const newReviewComment = ref('');
+const submittingReview = ref(false);
+
+async function submitCourseReview() {
+  if (!course.value || !newReviewComment.value.trim()) return;
+  submittingReview.value = true;
+  try {
+    const res = await courseStore.addCourseReview(course.value.slug, {
+      rating: newReviewRating.value,
+      comment: newReviewComment.value.trim(),
+    });
+    if (res && res.review) {
+      if (!Array.isArray(course.value.reviews)) {
+        course.value.reviews = [];
+      }
+      course.value.reviews.unshift(res.review);
+      newReviewComment.value = '';
+      newReviewRating.value = 5;
+      alert('Thank you! Your course review and comment have been published.');
+    }
+  } catch (err) {
+    console.error('Failed to submit review:', err);
+    alert(err?.response?.data?.message || 'Failed to submit review. Please ensure you are logged in.');
+  } finally {
+    submittingReview.value = false;
   }
 }
 
