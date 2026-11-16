@@ -26,11 +26,11 @@ return new class extends Migration
             $table->json('emergency_contact')->nullable();
             $table->json('disability_accommodations')->nullable();
             $table->string('boarding_status', 20)->nullable();
-            $table->foreignId('hostel_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('room_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('transport_id')->nullable()->constrained()->nullOnDelete();
+            $table->unsignedBigInteger('hostel_id')->nullable();
+            $table->unsignedBigInteger('room_id')->nullable();
+            $table->unsignedBigInteger('transport_id')->nullable();
             $table->string('fee_status', 30)->nullable();
-            $table->foreignId('library_id')->nullable()->constrained()->nullOnDelete();
+            $table->unsignedBigInteger('library_id')->nullable();
             $table->string('email')->nullable();
             $table->string('phone')->nullable();
             $table->date('date_of_birth')->nullable();

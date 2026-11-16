@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\GlobalClassroomController;
 use App\Http\Controllers\Api\CredentialController;
 use App\Http\Controllers\Api\AiTutorController;
 use App\Http\Controllers\Api\InstructorController;
+use App\Http\Controllers\Api\AdminUserController;
 
 // Authentication
 Route::prefix('auth')->group(function () {
@@ -57,6 +58,16 @@ Route::prefix('instructor')->group(function () {
         Route::post('/upload', [InstructorController::class, 'uploadMedia']);
         Route::post('/courses', [InstructorController::class, 'storeCourse']);
     });
+});
+
+// Admin User & Registration Management (Authorized for admins only)
+Route::prefix('admin')->middleware(['api.auth', 'role:admin'])->group(function () {
+    Route::get('/stats', [AdminUserController::class, 'stats']);
+    Route::get('/users', [AdminUserController::class, 'index']);
+    Route::patch('/users/{id}/role', [AdminUserController::class, 'updateRole']);
+    Route::patch('/users/{id}/status', [AdminUserController::class, 'updateStatus']);
+    Route::patch('/users/{id}/verify', [AdminUserController::class, 'verifyInstructor']);
+    Route::delete('/users/{id}', [AdminUserController::class, 'destroy']);
 });
 
 // System Health & Telemetry

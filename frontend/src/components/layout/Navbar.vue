@@ -86,6 +86,14 @@
             Instructor Studio
           </router-link>
 
+          <router-link
+            v-if="authStore.isAdmin"
+            to="/admin/users"
+            class="text-xs font-bold text-purple-600 hover:text-purple-700 px-3 py-2 rounded-lg hover:bg-purple-50 transition-colors hidden xl:block"
+          >
+            Admin Console
+          </router-link>
+
           <!-- Wishlist Heart Trigger (Udemy style) -->
           <router-link
             to="/dashboard"

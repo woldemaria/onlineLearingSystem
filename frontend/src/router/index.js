@@ -9,6 +9,7 @@ import StudentDashboard from '@/pages/StudentDashboard.vue';
 import InstructorStudio from '@/pages/InstructorStudio.vue';
 import CertificateVerification from '@/pages/CertificateVerification.vue';
 import CareerResources from '@/pages/CareerResources.vue';
+import AdminUsers from '@/pages/AdminUsers.vue';
 import Login from '@/pages/Login.vue';
 
 const routes = [
@@ -22,6 +23,7 @@ const routes = [
   { path: '/careers', name: 'CareerResources', component: CareerResources },
   { path: '/career-resources', redirect: '/careers' },
   { path: '/instructor', name: 'InstructorStudio', component: InstructorStudio },
+  { path: '/admin/users', name: 'AdminUsers', component: AdminUsers },
   { path: '/verify/:code?', name: 'CertificateVerification', component: CertificateVerification },
   { path: '/login', name: 'Login', component: Login },
 ];

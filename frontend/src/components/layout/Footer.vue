@@ -44,6 +44,7 @@
           <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-4">Enterprise & Legal</h4>
           <ul class="space-y-2.5 text-sm">
             <li><router-link to="/instructor" class="hover:text-white transition-colors">Teach on GELME</router-link></li>
+            <li><router-link to="/admin/users" class="hover:text-purple-400 transition-colors">User Governance (Admin)</router-link></li>
             <li><a href="#" class="hover:text-white transition-colors">GDPR & Data Privacy</a></li>
             <li><a href="#" class="hover:text-white transition-colors">Terms of Service</a></li>
             <li><router-link to="/verify" class="hover:text-white transition-colors">Credential Audit Ledger</router-link></li>
