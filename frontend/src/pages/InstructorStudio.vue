@@ -144,29 +144,31 @@
 
       <!-- Create Course / Upload Video & PDF Modal -->
       <div v-if="showCreateModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
-        <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-xl w-full p-6 sm:p-8 text-white shadow-2xl relative my-8">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-3xl w-full p-6 sm:p-8 text-white shadow-2xl relative my-8 max-h-[90vh] flex flex-col">
           <button @click="showCreateModal = false" class="absolute top-5 right-5 text-slate-400 hover:text-white text-lg">✕</button>
 
-          <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-950 px-2.5 py-0.5 rounded-full border border-indigo-800">
-            Publish New Masterclass
-          </span>
-          <h3 class="text-xl font-black mt-2 mb-1">Upload Course Video & PDF Study Materials</h3>
-          <p class="text-xs text-slate-400 mb-6">Create your curriculum, upload your HD video lecture, and attach downloadable PDF study guides.</p>
+          <div class="flex-shrink-0">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-950 px-2.5 py-0.5 rounded-full border border-indigo-800">
+              Publish New Masterclass
+            </span>
+            <h3 class="text-xl font-black mt-2 mb-1">Multi-Lesson Course & Syllabus Studio</h3>
+            <p class="text-xs text-slate-400 mb-4">Structure your multi-module curriculum, upload HD video lectures, and attach downloadable PDF study guides.</p>
 
-          <!-- Upload Status / Error Banner -->
-          <div v-if="uploadError" class="mb-4 p-3 bg-rose-500/20 border border-rose-500 text-rose-300 text-xs rounded-xl flex items-center gap-2">
-            <span>⚠️</span>
-            <span>{{ uploadError }}</span>
+            <!-- Upload Status / Error Banner -->
+            <div v-if="uploadError" class="mb-4 p-3 bg-rose-500/20 border border-rose-500 text-rose-300 text-xs rounded-xl flex items-center gap-2">
+              <span>⚠️</span>
+              <span>{{ uploadError }}</span>
+            </div>
           </div>
 
-          <div class="space-y-4 text-xs">
+          <div class="space-y-4 text-xs overflow-y-auto pr-1 flex-1">
             <div>
               <label class="block font-bold text-slate-300 mb-1">Course Title *</label>
               <input
                 v-model="newTitle"
                 type="text"
                 required
-                placeholder="e.g. Docker & Kubernetes Production Cloud Engineering"
+                placeholder="e.g. Production Cloud Architecture & Microservices"
                 class="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
@@ -206,59 +208,210 @@
               ></textarea>
             </div>
 
-            <!-- Video Upload Dropzone -->
-            <div class="p-3.5 bg-slate-800/80 rounded-2xl border border-slate-700">
-              <label class="block font-bold text-slate-200 mb-1 flex items-center justify-between">
-                <span>🎥 Course Lesson Video (.mp4, .webm, .mov)</span>
-                <span v-if="videoUploadedUrl" class="text-emerald-400 text-[10px] font-bold">✓ Ready</span>
-              </label>
-
-              <div class="flex items-center gap-3 mt-2">
-                <input
-                  type="file"
-                  accept="video/mp4,video/webm,video/quicktime,video/x-m4v"
-                  @change="handleVideoFile"
-                  class="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
-                />
-              </div>
-
-              <!-- Uploading indicator -->
-              <div v-if="videoUploading" class="mt-2 text-indigo-400 text-[11px] flex items-center gap-2">
-                <span class="animate-spin">⏳</span>
-                <span>Uploading video file to secure media storage...</span>
-              </div>
-
-              <div v-if="videoUploadedUrl" class="mt-2 p-2 bg-slate-900 rounded-lg text-[11px] text-slate-300 flex items-center justify-between">
-                <span class="truncate font-mono text-emerald-400">{{ videoFileName || 'Uploaded Video' }} ({{ videoFileSize }})</span>
-                <a :href="videoUploadedUrl" target="_blank" class="text-indigo-400 hover:underline flex-shrink-0">Preview</a>
+            <!-- Curriculum Builder Mode Switcher -->
+            <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+              <span class="font-bold text-sm text-white">Course Curriculum & Syllabus</span>
+              <div class="flex items-center gap-2 bg-slate-800 p-1 rounded-xl border border-slate-700">
+                <button
+                  type="button"
+                  @click="curriculumMode = 'multi'"
+                  class="px-3 py-1 rounded-lg text-xs font-bold transition-all"
+                  :class="curriculumMode === 'multi' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'"
+                >
+                  Multi-Lesson Syllabus
+                </button>
+                <button
+                  type="button"
+                  @click="curriculumMode = 'quick'"
+                  class="px-3 py-1 rounded-lg text-xs font-bold transition-all"
+                  :class="curriculumMode === 'quick' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'"
+                >
+                  Quick Single Upload
+                </button>
               </div>
             </div>
 
-            <!-- PDF Material Upload Dropzone -->
-            <div class="p-3.5 bg-slate-800/80 rounded-2xl border border-slate-700">
-              <label class="block font-bold text-slate-200 mb-1 flex items-center justify-between">
-                <span>📄 Lesson PDF Guide / Study Slides (.pdf)</span>
-                <span v-if="pdfUploadedUrl" class="text-emerald-400 text-[10px] font-bold">✓ Ready</span>
-              </label>
+            <!-- Multi-Lesson Syllabus Builder View -->
+            <div v-if="curriculumMode === 'multi'" class="space-y-4">
+              <div
+                v-for="(mod, mIdx) in modules"
+                :key="mIdx"
+                class="p-4 bg-slate-800/60 rounded-2xl border border-slate-700 space-y-3"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <div class="flex-1 flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded bg-indigo-950 text-indigo-400 text-[10px] font-mono font-bold">
+                      Module {{ mIdx + 1 }}
+                    </span>
+                    <input
+                      v-model="mod.title"
+                      type="text"
+                      class="flex-1 p-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white font-bold"
+                      placeholder="e.g. Module 1: System Foundations"
+                    />
+                  </div>
+                  <button
+                    v-if="modules.length > 1"
+                    type="button"
+                    @click="removeModule(mIdx)"
+                    class="text-rose-400 hover:text-rose-300 text-xs px-2 py-1 bg-rose-950/50 rounded-lg border border-rose-800"
+                  >
+                    Delete Module
+                  </button>
+                </div>
 
-              <div class="flex items-center gap-3 mt-2">
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  @change="handlePdfFile"
-                  class="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer"
-                />
+                <!-- Lessons in Module -->
+                <div class="pl-3 border-l-2 border-indigo-500/40 space-y-3">
+                  <div
+                    v-for="(les, lIdx) in mod.lessons"
+                    :key="lIdx"
+                    class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 space-y-2.5"
+                  >
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="flex-1 flex items-center gap-2">
+                        <span class="text-[11px] font-mono text-slate-400 font-bold">
+                          {{ mIdx + 1 }}.{{ lIdx + 1 }}
+                        </span>
+                        <input
+                          v-model="les.title"
+                          type="text"
+                          class="flex-1 p-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white"
+                          placeholder="Lesson Title, e.g. Architecture Walkthrough"
+                        />
+                        <div class="flex items-center gap-1 text-[11px] text-slate-400 flex-shrink-0">
+                          <input
+                            v-model.number="les.duration_minutes"
+                            type="number"
+                            min="1"
+                            class="w-14 p-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white text-center"
+                          />
+                          <span>min</span>
+                        </div>
+                      </div>
+                      <button
+                        v-if="mod.lessons.length > 1"
+                        type="button"
+                        @click="removeLesson(mIdx, lIdx)"
+                        class="text-slate-500 hover:text-rose-400 text-xs px-1.5"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <!-- Uploads for this lesson: Video & PDF -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                      <!-- Lesson Video Upload -->
+                      <div class="p-2 bg-slate-950/60 rounded-lg border border-slate-800">
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-indigo-300 font-bold">🎥 Video Lecture</span>
+                          <span v-if="les.video_url" class="text-emerald-400 text-[10px]">✓ Loaded</span>
+                        </div>
+                        <input
+                          type="file"
+                          accept="video/mp4,video/webm,video/quicktime"
+                          @change="e => uploadLessonMedia(e, mIdx, lIdx, 'video')"
+                          class="block w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:bg-indigo-600 file:text-white cursor-pointer"
+                        />
+                        <div v-if="les.video_name" class="mt-1 truncate font-mono text-[10px] text-slate-400">
+                          {{ les.video_name }}
+                        </div>
+                      </div>
+
+                      <!-- Lesson PDF Material Upload -->
+                      <div class="p-2 bg-slate-950/60 rounded-lg border border-slate-800">
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-emerald-300 font-bold">📄 PDF Syllabus/Notes</span>
+                          <span v-if="les.pdf_url" class="text-emerald-400 text-[10px]">✓ Loaded</span>
+                        </div>
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          @change="e => uploadLessonMedia(e, mIdx, lIdx, 'document')"
+                          class="block w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:bg-emerald-600 file:text-white cursor-pointer"
+                        />
+                        <div v-if="les.pdf_name" class="mt-1 truncate font-mono text-[10px] text-slate-400">
+                          {{ les.pdf_name }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    @click="addLesson(mIdx)"
+                    class="w-full py-1.5 border border-dashed border-indigo-500/40 rounded-xl text-indigo-400 hover:bg-indigo-950/40 text-xs font-bold transition-all"
+                  >
+                    + Add Lesson to Module {{ mIdx + 1 }}
+                  </button>
+                </div>
               </div>
 
-              <!-- Uploading indicator -->
-              <div v-if="pdfUploading" class="mt-2 text-emerald-400 text-[11px] flex items-center gap-2">
-                <span class="animate-spin">⏳</span>
-                <span>Uploading PDF document...</span>
+              <button
+                type="button"
+                @click="addModule"
+                class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold border border-slate-700 transition-all flex items-center justify-center gap-2"
+              >
+                <span>➕</span>
+                <span>Add Another Curriculum Module</span>
+              </button>
+            </div>
+
+            <!-- Quick Single Upload View (Legacy fallback) -->
+            <div v-else class="space-y-4">
+              <!-- Video Upload Dropzone -->
+              <div class="p-3.5 bg-slate-800/80 rounded-2xl border border-slate-700">
+                <label class="block font-bold text-slate-200 mb-1 flex items-center justify-between">
+                  <span>🎥 Course Lesson Video (.mp4, .webm, .mov)</span>
+                  <span v-if="videoUploadedUrl" class="text-emerald-400 text-[10px] font-bold">✓ Ready</span>
+                </label>
+
+                <div class="flex items-center gap-3 mt-2">
+                  <input
+                    type="file"
+                    accept="video/mp4,video/webm,video/quicktime,video/x-m4v"
+                    @change="handleVideoFile"
+                    class="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
+                  />
+                </div>
+
+                <!-- Uploading indicator -->
+                <div v-if="videoUploading" class="mt-2 text-indigo-400 text-[11px] flex items-center gap-2">
+                  <span class="animate-spin">⏳</span>
+                  <span>Uploading video file to secure media storage...</span>
+                </div>
+
+                <div v-if="videoUploadedUrl" class="mt-2 p-2 bg-slate-900 rounded-lg text-[11px] text-slate-300 flex items-center justify-between">
+                  <span class="truncate font-mono text-emerald-400">{{ videoFileName || 'Uploaded Video' }} ({{ videoFileSize }})</span>
+                  <a :href="videoUploadedUrl" target="_blank" class="text-indigo-400 hover:underline flex-shrink-0">Preview</a>
+                </div>
               </div>
 
-              <div v-if="pdfUploadedUrl" class="mt-2 p-2 bg-slate-900 rounded-lg text-[11px] text-slate-300 flex items-center justify-between">
-                <span class="truncate font-mono text-emerald-400">{{ pdfFileName || 'Uploaded PDF' }} ({{ pdfFileSize }})</span>
-                <a :href="pdfUploadedUrl" target="_blank" class="text-indigo-400 hover:underline flex-shrink-0">View PDF</a>
+              <!-- PDF Material Upload Dropzone -->
+              <div class="p-3.5 bg-slate-800/80 rounded-2xl border border-slate-700">
+                <label class="block font-bold text-slate-200 mb-1 flex items-center justify-between">
+                  <span>📄 Lesson PDF Guide / Study Slides (.pdf)</span>
+                  <span v-if="pdfUploadedUrl" class="text-emerald-400 text-[10px] font-bold">✓ Ready</span>
+                </label>
+
+                <div class="flex items-center gap-3 mt-2">
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    @change="handlePdfFile"
+                    class="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer"
+                  />
+                </div>
+
+                <!-- Uploading indicator -->
+                <div v-if="pdfUploading" class="mt-2 text-emerald-400 text-[11px] flex items-center gap-2">
+                  <span class="animate-spin">⏳</span>
+                  <span>Uploading PDF document...</span>
+                </div>
+
+                <div v-if="pdfUploadedUrl" class="mt-2 p-2 bg-slate-900 rounded-lg text-[11px] text-slate-300 flex items-center justify-between">
+                  <span class="truncate font-mono text-emerald-400">{{ pdfFileName || 'Uploaded PDF' }} ({{ pdfFileSize }})</span>
+                  <a :href="pdfUploadedUrl" target="_blank" class="text-indigo-400 hover:underline flex-shrink-0">View PDF</a>
+                </div>
               </div>
             </div>
           </div>
@@ -302,8 +455,102 @@ const newTitle = ref('');
 const newFormat = ref('self_paced');
 const newPrice = ref('19.99');
 const newDescription = ref('');
+const curriculumMode = ref('multi');
 
-// Video state
+// Multi-lesson syllabus state
+const modules = ref([
+  {
+    title: 'Module 1: Foundations & Architecture',
+    lessons: [
+      {
+        title: '1.1 System Architecture Overview',
+        duration_minutes: 20,
+        video_url: '',
+        video_name: '',
+        pdf_url: '',
+        pdf_name: '',
+      },
+      {
+        title: '1.2 Hands-on Implementation Lab',
+        duration_minutes: 35,
+        video_url: '',
+        video_name: '',
+        pdf_url: '',
+        pdf_name: '',
+      },
+    ],
+  },
+]);
+
+function addModule() {
+  const nextNum = modules.value.length + 1;
+  modules.value.push({
+    title: `Module ${nextNum}: Advanced Mastery`,
+    lessons: [
+      {
+        title: `${nextNum}.1 Deep Dive Lecture`,
+        duration_minutes: 25,
+        video_url: '',
+        video_name: '',
+        pdf_url: '',
+        pdf_name: '',
+      },
+    ],
+  });
+}
+
+function removeModule(mIdx) {
+  if (modules.value.length > 1) {
+    modules.value.splice(mIdx, 1);
+  }
+}
+
+function addLesson(mIdx) {
+  const nextNum = modules.value[mIdx].lessons.length + 1;
+  modules.value[mIdx].lessons.push({
+    title: `Lesson ${mIdx + 1}.${nextNum}`,
+    duration_minutes: 20,
+    video_url: '',
+    video_name: '',
+    pdf_url: '',
+    pdf_name: '',
+  });
+}
+
+function removeLesson(mIdx, lIdx) {
+  if (modules.value[mIdx].lessons.length > 1) {
+    modules.value[mIdx].lessons.splice(lIdx, 1);
+  }
+}
+
+async function uploadLessonMedia(e, mIdx, lIdx, type) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  uploadError.value = '';
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+
+    const res = await axios.post('/api/instructor/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    const targetLesson = modules.value[mIdx].lessons[lIdx];
+    if (type === 'video') {
+      targetLesson.video_url = res.data.url;
+      targetLesson.video_name = res.data.file_name;
+    } else {
+      targetLesson.pdf_url = res.data.url;
+      targetLesson.pdf_name = res.data.file_name;
+    }
+  } catch (err) {
+    uploadError.value = err.response?.data?.message || `Failed to upload ${type}.`;
+  }
+}
+
+// Single / Quick upload state
 const videoUploading = ref(false);
 const videoUploadedUrl = ref('');
 const videoFileName = ref('');
@@ -383,10 +630,27 @@ async function submitCreate() {
       type: newFormat.value,
       price: parseFloat(newPrice.value) || 0,
       description: newDescription.value.trim(),
-      video_url: videoUploadedUrl.value || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-      pdf_url: pdfUploadedUrl.value || null,
-      pdf_name: pdfFileName.value || 'Course_Guide.pdf',
     };
+
+    if (curriculumMode.value === 'multi') {
+      payload.modules = modules.value.map(m => ({
+        title: m.title,
+        lessons: m.lessons.map(l => ({
+          title: l.title,
+          duration_minutes: l.duration_minutes || 20,
+          video_url: l.video_url || null,
+          pdf_url: l.pdf_url || null,
+          pdf_name: l.pdf_name || 'Study Material.pdf',
+        })),
+      }));
+      // First video as preview video if available
+      const firstVid = payload.modules[0]?.lessons[0]?.video_url;
+      if (firstVid) payload.video_url = firstVid;
+    } else {
+      payload.video_url = videoUploadedUrl.value || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+      payload.pdf_url = pdfUploadedUrl.value || null;
+      payload.pdf_name = pdfFileName.value || 'Course_Guide.pdf';
+    }
 
     const res = await axios.post('/api/instructor/courses', payload);
     alert(`🎉 "${res.data.course.title}" published successfully to GELME!`);

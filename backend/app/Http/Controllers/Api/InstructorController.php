@@ -148,6 +148,7 @@ class InstructorController extends Controller
             'pdf_name' => 'nullable|string',
             'thumbnail_url' => 'nullable|string',
             'duration_hours' => 'nullable|integer',
+            'modules' => 'nullable|array',
         ]);
 
         $user = $request->user();
@@ -185,32 +186,79 @@ class InstructorController extends Controller
             'preview_video_path' => $validated['video_url'] ?? null,
         ]);
 
-        // Automatically create Module 1 and initial Lesson
-        $module = CourseModule::create([
-            'course_id' => $course->id,
-            'title' => 'Module 1: Foundations & Core Concepts',
-            'slug' => 'module-1-foundations',
-            'order' => 1,
-            'is_published' => true,
-        ]);
+        $hasCustomModules = !empty($validated['modules']) && count($validated['modules']) > 0;
+        $firstLessonId = null;
 
-        $lesson = Lesson::create([
-            'course_id' => $course->id,
-            'module_id' => $module->id,
-            'title' => '1.1 Comprehensive Overview & Guided Project',
-            'slug' => 'overview-guided-project',
-            'type' => !empty($validated['video_url']) ? 'video' : 'document',
-            'external_url' => $validated['video_url'] ?? 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-            'duration_minutes' => 25,
-            'order' => 1,
-            'is_published' => true,
-            'is_free_preview' => true,
-            'content' => [
-                'pdf_url' => $validated['pdf_url'] ?? null,
-                'pdf_name' => $validated['pdf_name'] ?? 'Course Resource Guide.pdf',
-                'description' => 'Core lecture materials, guided walkthrough, and downloadable resource slides.',
-            ],
-        ]);
+        if ($hasCustomModules) {
+            foreach ($validated['modules'] as $mIndex => $m) {
+                $moduleTitle = !empty($m['title']) ? $m['title'] : ('Module ' . ($mIndex + 1));
+                $courseModule = CourseModule::create([
+                    'course_id' => $course->id,
+                    'title' => $moduleTitle,
+                    'slug' => Str::slug($moduleTitle) . '-' . ($mIndex + 1),
+                    'order' => $mIndex + 1,
+                    'is_published' => true,
+                ]);
+
+                $lessons = $m['lessons'] ?? [];
+                foreach ($lessons as $lIndex => $l) {
+                    $lessonTitle = !empty($l['title']) ? $l['title'] : ("Lesson " . ($mIndex + 1) . "." . ($lIndex + 1));
+                    $videoUrl = $l['video_url'] ?? $validated['video_url'] ?? null;
+                    $pdfUrl = $l['pdf_url'] ?? $validated['pdf_url'] ?? null;
+                    $pdfName = $l['pdf_name'] ?? $validated['pdf_name'] ?? 'Resource Attachment.pdf';
+
+                    $lesson = Lesson::create([
+                        'course_id' => $course->id,
+                        'module_id' => $courseModule->id,
+                        'title' => $lessonTitle,
+                        'slug' => Str::slug($lessonTitle) . '-' . ($lIndex + 1) . '-' . rand(10, 99),
+                        'type' => !empty($videoUrl) ? 'video' : 'document',
+                        'external_url' => $videoUrl ?: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+                        'duration_minutes' => !empty($l['duration_minutes']) ? (int) $l['duration_minutes'] : 20,
+                        'order' => $lIndex + 1,
+                        'is_published' => true,
+                        'is_free_preview' => ($mIndex === 0 && $lIndex === 0),
+                        'content' => [
+                            'pdf_url' => $pdfUrl,
+                            'pdf_name' => $pdfName,
+                            'description' => $l['description'] ?? 'Comprehensive lesson lecture, hands-on instructions, and downloadable study materials.',
+                        ],
+                    ]);
+
+                    if (!$firstLessonId) {
+                        $firstLessonId = $lesson->id;
+                    }
+                }
+            }
+        } else {
+            // Automatically create Module 1 and initial Lesson
+            $module = CourseModule::create([
+                'course_id' => $course->id,
+                'title' => 'Module 1: Foundations & Core Concepts',
+                'slug' => 'module-1-foundations-' . rand(100, 999),
+                'order' => 1,
+                'is_published' => true,
+            ]);
+
+            $lesson = Lesson::create([
+                'course_id' => $course->id,
+                'module_id' => $module->id,
+                'title' => '1.1 Comprehensive Overview & Guided Project',
+                'slug' => 'overview-guided-project-' . rand(100, 999),
+                'type' => !empty($validated['video_url']) ? 'video' : 'document',
+                'external_url' => $validated['video_url'] ?? 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+                'duration_minutes' => 25,
+                'order' => 1,
+                'is_published' => true,
+                'is_free_preview' => true,
+                'content' => [
+                    'pdf_url' => $validated['pdf_url'] ?? null,
+                    'pdf_name' => $validated['pdf_name'] ?? 'Course Resource Guide.pdf',
+                    'description' => 'Core lecture materials, guided walkthrough, and downloadable resource slides.',
+                ],
+            ]);
+            $firstLessonId = $lesson->id;
+        }
 
         return response()->json([
             'success' => true,
@@ -222,8 +270,71 @@ class InstructorController extends Controller
                 'type' => $course->type,
                 'price' => (float) $course->price,
                 'thumbnail_url' => $course->thumbnail_path,
-                'lesson_id' => $lesson->id,
+                'lesson_id' => $firstLessonId,
             ],
         ], 201);
+    }
+
+    public function saveCurriculum(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'modules' => 'required|array',
+            'modules.*.title' => 'required|string',
+            'modules.*.lessons' => 'nullable|array',
+        ]);
+
+        $course = Course::findOrFail($id);
+
+        // Delete existing modules and lessons for fresh sync
+        $existingModuleIds = CourseModule::where('course_id', $course->id)->pluck('id');
+        Lesson::whereIn('module_id', $existingModuleIds)->delete();
+        CourseModule::where('course_id', $course->id)->delete();
+
+        $firstLessonId = null;
+        foreach ($validated['modules'] as $mIndex => $m) {
+            $courseModule = CourseModule::create([
+                'course_id' => $course->id,
+                'title' => $m['title'],
+                'slug' => Str::slug($m['title']) . '-' . ($mIndex + 1),
+                'order' => $mIndex + 1,
+                'is_published' => true,
+            ]);
+
+            $lessons = $m['lessons'] ?? [];
+            foreach ($lessons as $lIndex => $l) {
+                $lessonTitle = !empty($l['title']) ? $l['title'] : ("Lesson " . ($mIndex + 1) . "." . ($lIndex + 1));
+                $videoUrl = $l['video_url'] ?? null;
+                $pdfUrl = $l['pdf_url'] ?? null;
+                $pdfName = $l['pdf_name'] ?? 'Lecture Material.pdf';
+
+                $lesson = Lesson::create([
+                    'course_id' => $course->id,
+                    'module_id' => $courseModule->id,
+                    'title' => $lessonTitle,
+                    'slug' => Str::slug($lessonTitle) . '-' . ($lIndex + 1) . '-' . rand(10, 99),
+                    'type' => !empty($videoUrl) ? 'video' : 'document',
+                    'external_url' => $videoUrl ?: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+                    'duration_minutes' => !empty($l['duration_minutes']) ? (int) $l['duration_minutes'] : 20,
+                    'order' => $lIndex + 1,
+                    'is_published' => true,
+                    'is_free_preview' => ($mIndex === 0 && $lIndex === 0),
+                    'content' => [
+                        'pdf_url' => $pdfUrl,
+                        'pdf_name' => $pdfName,
+                        'description' => $l['description'] ?? 'Comprehensive lesson lecture, hands-on instructions, and downloadable study materials.',
+                    ],
+                ]);
+
+                if (!$firstLessonId) {
+                    $firstLessonId = $lesson->id;
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Course curriculum updated successfully!',
+            'first_lesson_id' => $firstLessonId,
+        ]);
     }
 }

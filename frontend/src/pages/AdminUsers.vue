@@ -40,6 +40,14 @@
 
           <div class="flex items-center gap-3">
             <button
+              @click="exportUsersCsv"
+              :disabled="isExporting"
+              class="px-4 py-2 bg-emerald-600/90 hover:bg-emerald-500 text-slate-950 font-black rounded-xl text-xs shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              <span>{{ isExporting ? '⏳' : '📊' }}</span>
+              <span>{{ isExporting ? 'Exporting...' : 'Export CSV Report' }}</span>
+            </button>
+            <button
               @click="loadData"
               class="px-4 py-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-xl text-xs font-bold border border-slate-700 transition-all flex items-center gap-2"
             >
@@ -275,7 +283,7 @@
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import { useAuthStore } from '@/stores/auth';
-import Topography from '@/components/common/Topography.vue';
+import Topography from '@/components/common/Topography';
 
 const authStore = useAuthStore();
 
@@ -286,6 +294,34 @@ const searchQuery = ref('');
 const roleFilter = ref('all');
 const statusFilter = ref('all');
 const alertMessage = ref('');
+const isExporting = ref(false);
+
+async function exportUsersCsv() {
+  try {
+    isExporting.value = true;
+    const response = await axios.get('/api/admin/users/export', {
+      params: {
+        role: roleFilter.value,
+        status: statusFilter.value,
+      },
+      responseType: 'blob',
+    });
+    const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `gelme_users_report_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    alertMessage.value = 'User registry CSV exported successfully!';
+  } catch (err) {
+    alert('Failed to export CSV report: ' + (err.response?.data?.message || err.message));
+  } finally {
+    isExporting.value = false;
+  }
+}
 
 async function loadData() {
   try {

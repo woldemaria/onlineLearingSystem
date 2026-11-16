@@ -157,4 +157,66 @@ class AdminUserController extends Controller
             'message' => "User account {$user->name} deleted successfully.",
         ]);
     }
+
+    public function exportCsv(Request $request)
+    {
+        $query = User::with(['profile', 'instructor', 'student'])->orderBy('id', 'asc');
+
+        if ($request->filled('role') && $request->role !== 'all') {
+            $role = $request->role;
+            $query->where('role', $role);
+        }
+
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('is_active', $request->status === 'active');
+        }
+
+        $users = $query->get();
+
+        $filename = 'gelme_users_report_' . date('Y-m-d_His') . '.csv';
+
+        $callback = function () use ($users) {
+            $handle = fopen('php://output', 'w');
+            // UTF-8 BOM for Excel compatibility
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            fputcsv($handle, [
+                'User ID',
+                'Full Name',
+                'Email Address',
+                'Platform Role',
+                'Account Status',
+                'Instructor Verified',
+                'Student ID Number',
+                'Bio / Headline',
+                'Registration Date',
+                'Last Login',
+            ]);
+
+            foreach ($users as $user) {
+                fputcsv($handle, [
+                    $user->id,
+                    $user->name,
+                    $user->email,
+                    ucfirst($user->role),
+                    $user->is_active ? 'Active' : 'Suspended',
+                    $user->role === 'instructor' ? ($user->instructor?->is_verified ? 'Yes' : 'Pending') : 'N/A',
+                    $user->student?->student_number ?? ('STU-' . $user->id),
+                    $user->profile?->bio ?? '',
+                    $user->created_at?->format('Y-m-d H:i:s') ?? '',
+                    $user->last_login_at?->format('Y-m-d H:i:s') ?? 'Never',
+                ]);
+            }
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
+    }
 }

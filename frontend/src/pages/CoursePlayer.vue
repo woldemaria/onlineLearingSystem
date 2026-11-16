@@ -54,7 +54,7 @@
             ref="videoRef"
             controls
             autoplay
-            :src="currentLesson?.video_url || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'"
+            :src="videoStreamSrc"
             class="w-full h-full object-contain"
             @timeupdate="onTimeUpdate"
             @ended="handleLessonEnd"
@@ -526,6 +526,18 @@ const courseStore = useCourseStore();
 
 const course = ref(null);
 const currentLesson = ref(null);
+
+const videoStreamSrc = computed(() => {
+  const url = currentLesson.value?.video_url;
+  if (!url) {
+    return 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+  }
+  if (url.startsWith('/storage/')) {
+    const rel = url.replace(/^\/storage\//, '');
+    return `/api/media/stream/${rel}`;
+  }
+  return url;
+});
 const sidebarOpen = ref(true);
 const activeTab = ref('overview');
 const videoRef = ref(null);

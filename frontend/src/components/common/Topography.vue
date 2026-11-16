@@ -43,7 +43,7 @@ const props = defineProps({
   lightMode: { type: Boolean, default: false },
   dpr: { type: Number, default: undefined },
   className: { type: String, default: '' },
-  style: { type: Object, default: () => ({}) },
+  style: { type: [Object, String], default: () => ({}) },
 });
 
 const containerRef = ref(null);
