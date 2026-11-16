@@ -494,7 +494,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useCourseStore } from '@/stores/courses';
 
@@ -708,7 +708,50 @@ function nextLesson() {
   }
 }
 
+function handlePlayerKeydown(e) {
+  const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
+  if (isInput) return;
+
+  const video = videoRef.value;
+  if (!video) return;
+
+  if (e.code === 'Space' || e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    if (video.paused) {
+      video.play();
+    } else {
+      video.pause();
+    }
+  } else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'j') {
+    e.preventDefault();
+    video.currentTime = Math.max(0, video.currentTime - 5);
+  } else if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'l') {
+    e.preventDefault();
+    video.currentTime = Math.min(video.duration || 0, video.currentTime + 5);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    video.volume = Math.min(1, Number((video.volume + 0.1).toFixed(2)));
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    video.volume = Math.max(0, Number((video.volume - 0.1).toFixed(2)));
+  } else if (e.key.toLowerCase() === 'm') {
+    e.preventDefault();
+    video.muted = !video.muted;
+  } else if (e.key.toLowerCase() === 'c') {
+    e.preventDefault();
+    toggleCaptions();
+  } else if (e.key.toLowerCase() === 'f') {
+    e.preventDefault();
+    if (!document.fullscreenElement) {
+      video.requestFullscreen?.() || video.webkitRequestFullscreen?.();
+    } else {
+      document.exitFullscreen?.();
+    }
+  }
+}
+
 onMounted(async () => {
+  window.addEventListener('keydown', handlePlayerKeydown);
   const slug = route.params.slug;
   const res = await courseStore.fetchCourse(slug);
   if (res) {
@@ -718,5 +761,9 @@ onMounted(async () => {
       completedLessons.value.add(allLessons.value[0].id);
     }
   }
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handlePlayerKeydown);
 });
 </script>

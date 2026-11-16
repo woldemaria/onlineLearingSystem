@@ -38,7 +38,19 @@ class CourseCatalogController extends Controller
             });
         }
 
-        $courses = $query->with(['category', 'institution', 'creator'])->orderBy('current_enrollments', 'desc')->get();
+        if ($request->filled('sort')) {
+            match ($request->sort) {
+                'price_low' => $query->orderBy('price', 'asc'),
+                'price_high' => $query->orderBy('price', 'desc'),
+                'newest' => $query->orderBy('id', 'desc'),
+                'duration' => $query->orderBy('duration_hours', 'desc'),
+                default => $query->orderBy('current_enrollments', 'desc'),
+            };
+        } else {
+            $query->orderBy('current_enrollments', 'desc');
+        }
+
+        $courses = $query->with(['category', 'institution', 'creator'])->get();
 
         return response()->json([
             'data' => $courses->map(function ($c) {

@@ -44,3 +44,21 @@ Route::post('/ai/tutor', [AiTutorController::class, 'ask']);
 
 // Instructor Studio
 Route::get('/instructor/stats', [InstructorController::class, 'stats']);
+
+// System Health & Telemetry
+Route::get('/health', function () {
+    try {
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+        $dbStatus = 'connected';
+    } catch (\Throwable $e) {
+        $dbStatus = 'error: ' . $e->getMessage();
+    }
+
+    return response()->json([
+        'status' => 'healthy',
+        'service' => 'GELME Super Platform API',
+        'timestamp' => now()->toIso8601String(),
+        'database' => $dbStatus,
+        'version' => '1.0.0',
+    ]);
+});

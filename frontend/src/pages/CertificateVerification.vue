@@ -196,10 +196,31 @@ function printCertificate() {
   window.print();
 }
 
-function copyShareLink() {
+async function copyShareLink() {
   const url = window.location.origin + '/verify/' + verificationCode.value.trim();
-  navigator.clipboard.writeText(url);
-  alert('Verification URL copied to clipboard: ' + url);
+  if (navigator.share && navigator.canShare && navigator.canShare({ url })) {
+    try {
+      await navigator.share({
+        title: cert.value?.name || 'Verified Credential - GELME Global Consortium',
+        text: `Verify official credential for ${cert.value?.recipient_name || 'Recipient'}: ${cert.value?.name}`,
+        url,
+      });
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(url);
+      alert('Verification URL copied to clipboard: ' + url);
+      return;
+    } catch (e) {
+      console.warn('Clipboard write failed', e);
+    }
+  }
+  prompt('Copy this verification URL:', url);
 }
 
 onMounted(() => {

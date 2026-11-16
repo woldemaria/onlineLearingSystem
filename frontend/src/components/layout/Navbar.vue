@@ -26,6 +26,7 @@
 
           <div class="relative w-full">
             <input
+              ref="searchInputRef"
               v-model="searchQuery"
               @keyup.enter="handleSearch"
               type="text"
@@ -139,7 +140,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
@@ -150,6 +151,7 @@ const authStore = useAuthStore();
 const cartStore = useCartStore();
 const courseStore = useCourseStore();
 const searchQuery = ref('');
+const searchInputRef = ref(null);
 
 function handleSearch() {
   if (searchQuery.value.trim()) {
@@ -158,4 +160,34 @@ function handleSearch() {
     router.push('/courses');
   }
 }
+
+function handleGlobalKeydown(e) {
+  const isInputActive = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
+
+  // Pressing '/' or 'Ctrl+K' / 'Cmd+K' focuses the search input
+  if ((e.key === '/' && !isInputActive) || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')) {
+    e.preventDefault();
+    if (searchInputRef.value) {
+      searchInputRef.value.focus();
+      searchInputRef.value.select();
+    }
+  }
+
+  // Pressing 'Escape' blurs search input or closes cart drawer
+  if (e.key === 'Escape') {
+    if (cartStore.isCartOpen) {
+      cartStore.isCartOpen = false;
+    } else if (searchInputRef.value && document.activeElement === searchInputRef.value) {
+      searchInputRef.value.blur();
+    }
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleGlobalKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown);
+});
 </script>

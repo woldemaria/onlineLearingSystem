@@ -8,6 +8,7 @@ export const useCourseStore = defineStore('courses', () => {
   const categories = ref([]);
   const myEnrollments = ref([]);
   const wishlist = ref(JSON.parse(localStorage.getItem('gelme_wishlist') || '[]'));
+  const recentlyViewed = ref(JSON.parse(localStorage.getItem('gelme_recent_courses') || '[]'));
   const loading = ref(false);
 
   async function fetchCourses(filters = {}) {
@@ -28,6 +29,9 @@ export const useCourseStore = defineStore('courses', () => {
     try {
       const res = await axios.get(`/api/courses/${slug}`);
       currentCourse.value = res.data.course;
+      if (res.data.course) {
+        recordRecentlyViewed(res.data.course);
+      }
       return res.data.course;
     } catch (e) {
       console.error('Failed to fetch course details:', e);
@@ -35,6 +39,32 @@ export const useCourseStore = defineStore('courses', () => {
     } finally {
       loading.value = false;
     }
+  }
+
+  function recordRecentlyViewed(course) {
+    if (!course || !course.id) return;
+    const filtered = recentlyViewed.value.filter(c => c.id !== course.id);
+    filtered.unshift({
+      id: course.id,
+      title: course.title,
+      slug: course.slug,
+      price: course.price,
+      instructor: course.instructor_name || course.instructor?.name || 'Lead Instructor',
+      thumbnail: course.thumbnail_url || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&auto=format&fit=crop&q=80',
+      viewed_at: new Date().toISOString(),
+    });
+    // Keep top 12
+    recentlyViewed.value = filtered.slice(0, 12);
+    try {
+      localStorage.setItem('gelme_recent_courses', JSON.stringify(recentlyViewed.value));
+    } catch (err) {
+      console.warn('Could not persist recent courses', err);
+    }
+  }
+
+  function clearRecentlyViewed() {
+    recentlyViewed.value = [];
+    localStorage.removeItem('gelme_recent_courses');
   }
 
   async function fetchCategories() {
@@ -123,11 +153,14 @@ export const useCourseStore = defineStore('courses', () => {
     categories,
     myEnrollments,
     wishlist,
+    recentlyViewed,
     loading,
     fetchCourses,
     fetchCourse,
     fetchCategories,
     fetchMyLearning,
+    recordRecentlyViewed,
+    clearRecentlyViewed,
     enroll,
     completeLesson,
     applyFinancialAid,
