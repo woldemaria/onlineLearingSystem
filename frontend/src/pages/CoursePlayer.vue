@@ -420,7 +420,30 @@
           </div>
 
           <!-- Downloadable Resources Tab -->
-          <div v-if="activeTab === 'resources'" class="space-y-2 text-xs">
+          <div v-if="activeTab === 'resources'" class="space-y-3 text-xs">
+            <!-- Dynamic Uploaded Lesson PDF if present -->
+            <div
+              v-if="currentLesson?.content?.pdf_url"
+              class="p-4 bg-emerald-950/40 border border-emerald-500/40 rounded-xl flex items-center justify-between shadow-sm"
+            >
+              <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-base font-bold">📄</span>
+                <div>
+                  <span class="text-white font-mono font-bold">{{ currentLesson.content.pdf_name || 'Official Lesson Study Guide.pdf' }}</span>
+                  <span class="text-[10px] text-emerald-400 block mt-0.5">Instructor Verified Study Document</span>
+                </div>
+              </div>
+              <a
+                :href="currentLesson.content.pdf_url"
+                target="_blank"
+                download
+                class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-md"
+              >
+                <span>⬇️</span>
+                <span>Download PDF</span>
+              </a>
+            </div>
+
             <div class="p-3.5 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between">
               <div>
                 <span class="text-white font-mono font-bold">production-source-code.zip</span>

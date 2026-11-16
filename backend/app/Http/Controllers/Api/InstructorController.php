@@ -4,15 +4,21 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Course;
+use App\Models\CourseCategory;
+use App\Models\CourseModule;
+use App\Models\Lesson;
+use App\Models\Media;
 use App\Models\User;
 use App\Models\VirtualClassroom;
-use App\Models\Enrollment;
 
 class InstructorController extends Controller
 {
     public function stats(Request $request)
     {
+        $user = $request->user();
         $totalStudents = Course::sum('current_enrollments') ?: 280000;
         $activeCourses = Course::where('status', 'active')->count();
         $upcomingLive = VirtualClassroom::count();
@@ -34,5 +40,190 @@ class InstructorController extends Controller
                 ['student' => 'Aisha Al-Hassan', 'course' => 'Amharic Language & Ethiopian Heritage Immersion', 'time' => '2 hours ago', 'amount' => '$18.50'],
             ]
         ]);
+    }
+
+    public function courses(Request $request)
+    {
+        $courses = Course::with(['category', 'institution', 'modules.lessons'])
+            ->orderBy('id', 'desc')
+            ->get();
+
+        return response()->json([
+            'courses' => $courses->map(function ($c) {
+                return [
+                    'id' => $c->id,
+                    'title' => $c->title,
+                    'slug' => $c->slug,
+                    'type' => $c->type,
+                    'price' => (float) $c->price,
+                    'enrollments_count' => $c->current_enrollments,
+                    'modules_count' => $c->modules->count(),
+                    'lessons_count' => $c->modules->sum(fn($m) => $m->lessons->count()),
+                    'status' => $c->status,
+                    'thumbnail_url' => $c->thumbnail_path ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
+                    'created_at' => $c->created_at?->diffForHumans() ?? 'recently',
+                ];
+            })
+        ]);
+    }
+
+    public function uploadMedia(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|max:512000', // up to 500MB
+            'type' => 'nullable|string|in:video,document,image,auto',
+        ]);
+
+        $file = $request->file('file');
+        $mime = $file->getMimeType();
+        $originalName = $file->getClientOriginalName();
+        $extension = strtolower($file->getClientOriginalExtension());
+        $size = $file->getSize();
+
+        // Determine media type
+        $type = $request->type ?? 'auto';
+        if ($type === 'auto') {
+            if (str_starts_with($mime, 'video/') || in_array($extension, ['mp4', 'webm', 'mov', 'm4v', 'mkv'])) {
+                $type = 'video';
+            } elseif ($mime === 'application/pdf' || in_array($extension, ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'txt'])) {
+                $type = 'document';
+            } else {
+                $type = 'image';
+            }
+        }
+
+        $folder = match ($type) {
+            'video' => 'courses/videos',
+            'document' => 'courses/materials',
+            default => 'courses/thumbnails',
+        };
+
+        // Store file in public disk
+        $path = $file->store($folder, 'public');
+        $publicUrl = '/storage/' . $path;
+
+        $userId = $request->user()?->id ?? 1;
+
+        $media = Media::create([
+            'user_id' => $userId,
+            'type' => $type,
+            'disk' => 'public',
+            'file_path' => $path,
+            'file_name' => $originalName,
+            'mime_type' => $mime,
+            'size' => $size,
+            'title' => pathinfo($originalName, PATHINFO_FILENAME),
+            'is_public' => true,
+            'visibility' => 'public',
+            'cdn_url' => $publicUrl,
+            'storage_provider' => 'local',
+            'processing_status' => 'completed',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => ucfirst($type) . ' uploaded successfully',
+            'media_id' => $media->id,
+            'type' => $type,
+            'file_name' => $originalName,
+            'mime_type' => $mime,
+            'size' => $size,
+            'size_formatted' => round($size / (1024 * 1024), 2) . ' MB',
+            'url' => $publicUrl,
+        ], 201);
+    }
+
+    public function storeCourse(Request $request)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'subtitle' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'type' => 'required|string|in:self_paced,cohort_based,live_virtual',
+            'level' => 'nullable|string|in:beginner,intermediate,advanced,all_levels',
+            'price' => 'required|numeric|min:0',
+            'category_slug' => 'nullable|string',
+            'video_url' => 'nullable|string',
+            'pdf_url' => 'nullable|string',
+            'pdf_name' => 'nullable|string',
+            'thumbnail_url' => 'nullable|string',
+            'duration_hours' => 'nullable|integer',
+        ]);
+
+        $user = $request->user();
+        $slug = Str::slug($validated['title']) . '-' . rand(100, 999);
+
+        $category = null;
+        if (!empty($validated['category_slug'])) {
+            $category = CourseCategory::where('slug', $validated['category_slug'])->first();
+        }
+        if (!$category) {
+            $category = CourseCategory::first();
+        }
+
+        $course = Course::create([
+            'title' => $validated['title'],
+            'slug' => $slug,
+            'subtitle' => $validated['subtitle'] ?? 'Comprehensive professional mastery course.',
+            'description' => $validated['description'] ?? 'Learn core practical skills and get hands-on experience through project-based learning.',
+            'type' => $validated['type'],
+            'level' => $validated['level'] ?? 'all_levels',
+            'status' => 'active',
+            'visibility' => 'public',
+            'is_published' => true,
+            'is_listed' => true,
+            'is_certified' => true,
+            'price' => $validated['price'],
+            'currency' => 'USD',
+            'is_free' => ((float) $validated['price'] <= 0),
+            'institution_id' => 1,
+            'category_id' => $category?->id,
+            'creator_id' => $user?->id ?? 1,
+            'duration_hours' => $validated['duration_hours'] ?? 8,
+            'current_enrollments' => 1,
+            'thumbnail_path' => $validated['thumbnail_url'] ?? 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
+            'preview_video_path' => $validated['video_url'] ?? null,
+        ]);
+
+        // Automatically create Module 1 and initial Lesson
+        $module = CourseModule::create([
+            'course_id' => $course->id,
+            'title' => 'Module 1: Foundations & Core Concepts',
+            'slug' => 'module-1-foundations',
+            'order' => 1,
+            'is_published' => true,
+        ]);
+
+        $lesson = Lesson::create([
+            'course_id' => $course->id,
+            'module_id' => $module->id,
+            'title' => '1.1 Comprehensive Overview & Guided Project',
+            'slug' => 'overview-guided-project',
+            'type' => !empty($validated['video_url']) ? 'video' : 'document',
+            'external_url' => $validated['video_url'] ?? 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+            'duration_minutes' => 25,
+            'order' => 1,
+            'is_published' => true,
+            'is_free_preview' => true,
+            'content' => [
+                'pdf_url' => $validated['pdf_url'] ?? null,
+                'pdf_name' => $validated['pdf_name'] ?? 'Course Resource Guide.pdf',
+                'description' => 'Core lecture materials, guided walkthrough, and downloadable resource slides.',
+            ],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Course created and published successfully!',
+            'course' => [
+                'id' => $course->id,
+                'title' => $course->title,
+                'slug' => $course->slug,
+                'type' => $course->type,
+                'price' => (float) $course->price,
+                'thumbnail_url' => $course->thumbnail_path,
+                'lesson_id' => $lesson->id,
+            ],
+        ], 201);
     }
 }

@@ -12,6 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->alias([
+            'api.auth' => \App\Http\Middleware\AuthenticateApi::class,
+            'role' => \App\Http\Middleware\RequireRole::class,
+        ]);
+
         $middleware->api([
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \Illuminate\Http\Middleware\HandleCors::class,

@@ -13,7 +13,11 @@ use App\Http\Controllers\Api\InstructorController;
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
-    Route::get('/me', [AuthController::class, 'me']);
+
+    Route::middleware('api.auth')->group(function () {
+        Route::get('/me', [AuthController::class, 'me']);
+        Route::post('/logout', [AuthController::class, 'logout']);
+    });
 });
 
 // Courses & Discovery (Udemy & Coursera)
@@ -23,11 +27,13 @@ Route::get('/categories', [CourseCatalogController::class, 'categories']);
 Route::get('/institutions', [CourseCatalogController::class, 'institutions']);
 
 // Learning, Progress & Coursera Financial Aid
-Route::post('/courses/{id}/enroll', [LearningController::class, 'enroll']);
-Route::get('/my-learning', [LearningController::class, 'myCourses']);
-Route::post('/lessons/{id}/complete', [LearningController::class, 'completeLesson']);
-Route::post('/financial-aid', [LearningController::class, 'financialAid']);
-Route::post('/assignments/submit', [LearningController::class, 'submitAssignment']);
+Route::middleware('api.auth')->group(function () {
+    Route::post('/courses/{id}/enroll', [LearningController::class, 'enroll']);
+    Route::get('/my-learning', [LearningController::class, 'myCourses']);
+    Route::post('/lessons/{id}/complete', [LearningController::class, 'completeLesson']);
+    Route::post('/financial-aid', [LearningController::class, 'financialAid']);
+    Route::post('/assignments/submit', [LearningController::class, 'submitAssignment']);
+});
 
 // Online Global Classrooms (Live 25-Min Immersion, Packages, & Placement Test)
 Route::get('/classrooms', [GlobalClassroomController::class, 'index']);
@@ -42,8 +48,16 @@ Route::get('/certificates/{code}', [CredentialController::class, 'verify']);
 // Generative AI Study Companion
 Route::post('/ai/tutor', [AiTutorController::class, 'ask']);
 
-// Instructor Studio
-Route::get('/instructor/stats', [InstructorController::class, 'stats']);
+// Instructor Studio & Uploads (Authorized for instructors & admins)
+Route::prefix('instructor')->group(function () {
+    Route::get('/stats', [InstructorController::class, 'stats']);
+    Route::get('/courses', [InstructorController::class, 'courses']);
+
+    Route::middleware(['api.auth', 'role:instructor,admin'])->group(function () {
+        Route::post('/upload', [InstructorController::class, 'uploadMedia']);
+        Route::post('/courses', [InstructorController::class, 'storeCourse']);
+    });
+});
 
 // System Health & Telemetry
 Route::get('/health', function () {

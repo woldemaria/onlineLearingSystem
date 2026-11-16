@@ -120,18 +120,35 @@
             </span>
           </button>
 
-          <!-- User Profile Avatar -->
+          <!-- User Profile / Auth State -->
           <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
-            <router-link to="/dashboard" class="flex items-center gap-2 group">
-              <img
-                :src="authStore.user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'"
-                alt="Avatar"
-                class="w-8 h-8 rounded-full object-cover ring-2 ring-indigo-500/30 group-hover:ring-indigo-600 transition-all"
-              />
-              <span class="text-xs font-bold text-slate-800 group-hover:text-indigo-600 hidden xl:inline">
-                {{ authStore.user?.name || 'Abebe Bekele' }}
-              </span>
-            </router-link>
+            <template v-if="authStore.isAuthenticated">
+              <router-link to="/dashboard" class="flex items-center gap-2 group" title="Dashboard">
+                <img
+                  :src="authStore.user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'"
+                  alt="Avatar"
+                  class="w-8 h-8 rounded-full object-cover ring-2 ring-indigo-500/30 group-hover:ring-indigo-600 transition-all"
+                />
+                <span class="text-xs font-bold text-slate-800 group-hover:text-indigo-600 hidden xl:inline">
+                  {{ authStore.user?.name }}
+                </span>
+              </router-link>
+              <button
+                @click="handleLogout"
+                class="text-[11px] font-bold text-slate-500 hover:text-rose-600 px-2 py-1 rounded hover:bg-slate-100 transition-colors hidden sm:block"
+                title="Sign Out"
+              >
+                Sign Out
+              </button>
+            </template>
+            <template v-else>
+              <router-link
+                to="/login"
+                class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm"
+              >
+                Sign In
+              </router-link>
+            </template>
           </div>
         </nav>
       </div>
@@ -159,6 +176,11 @@ function handleSearch() {
   } else {
     router.push('/courses');
   }
+}
+
+async function handleLogout() {
+  await authStore.logout();
+  router.push('/login');
 }
 
 function handleGlobalKeydown(e) {
