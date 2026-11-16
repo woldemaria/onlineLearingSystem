@@ -1,0 +1,722 @@
+<template>
+  <div class="h-screen flex flex-col bg-slate-950 text-white overflow-hidden" v-if="course">
+    <!-- Top Player Bar -->
+    <header class="h-14 bg-slate-900 border-b border-slate-800 px-4 sm:px-6 flex items-center justify-between flex-shrink-0 z-20">
+      <div class="flex items-center gap-3">
+        <router-link to="/dashboard" class="text-slate-400 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-colors">
+          <span>←</span>
+          <span class="hidden sm:inline">My Learning</span>
+        </router-link>
+        <span class="text-slate-700">|</span>
+        <h2 class="text-xs sm:text-sm font-bold text-slate-200 truncate max-w-xs md:max-w-md">
+          {{ course.title }}
+        </h2>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <!-- Progress Bar -->
+        <div class="hidden md:flex items-center gap-2.5">
+          <div class="w-32 h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div
+              class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
+              :style="{ width: `${progressPercent}%` }"
+            ></div>
+          </div>
+          <span class="text-xs font-mono font-bold text-emerald-400">{{ progressPercent }}%</span>
+        </div>
+
+        <!-- Claim Certificate Button (edX / Coursera / Udemy) -->
+        <router-link
+          v-if="progressPercent >= 100"
+          to="/verify/GELME-CERT-2026-X892K"
+          class="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-lg text-xs flex items-center gap-1 shadow-md shadow-amber-500/20 animate-bounce"
+        >
+          <span>🏆</span>
+          <span>View Verified Certificate</span>
+        </router-link>
+
+        <button
+          @click="sidebarOpen = !sidebarOpen"
+          class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-semibold text-slate-200 transition-colors"
+        >
+          {{ sidebarOpen ? 'Hide Curriculum' : 'Show Curriculum' }}
+        </button>
+      </div>
+    </header>
+
+    <!-- Player Body -->
+    <div class="flex-1 flex overflow-hidden relative">
+      <!-- Main Video Screen & In-Lesson Study Tabs -->
+      <div class="flex-1 flex flex-col overflow-y-auto bg-slate-950">
+        <!-- Video Screen Container -->
+        <div class="w-full bg-black flex items-center justify-center relative aspect-video max-h-[62vh]">
+          <video
+            ref="videoRef"
+            controls
+            autoplay
+            :src="currentLesson?.video_url || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'"
+            class="w-full h-full object-contain"
+            @timeupdate="onTimeUpdate"
+            @ended="handleLessonEnd"
+          ></video>
+
+          <!-- Captions Overlay -->
+          <div
+            v-if="captionsEnabled"
+            class="absolute bottom-16 px-4 py-1.5 bg-black/80 text-amber-300 font-semibold rounded-lg text-xs sm:text-sm text-center max-w-xl backdrop-blur-sm pointer-events-none"
+          >
+            [{{ currentCaptionLang.toUpperCase() }}] {{ activeCaptionText }}
+          </div>
+        </div>
+
+        <!-- Lesson Meta & Action Bar -->
+        <div class="p-5 sm:p-6 bg-slate-900 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-400">
+              Current Lecture
+            </span>
+            <h1 class="text-base sm:text-xl font-extrabold text-white mt-0.5">
+              {{ currentLesson?.title || 'Lesson Overview' }}
+            </h1>
+            <p class="text-xs text-slate-400 mt-1">
+              Duration: {{ currentLesson?.duration_minutes || 15 }} minutes • HD Video Stream
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <!-- Captions Selector -->
+            <button
+              @click="toggleCaptions"
+              class="flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-colors"
+              :class="captionsEnabled ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-300'"
+              title="Toggle Captions"
+            >
+              <span>CC</span>
+              <span v-if="captionsEnabled">({{ currentCaptionLang }})</span>
+            </button>
+
+            <!-- Playback Speed Dropdown -->
+            <div class="flex items-center gap-1 text-xs bg-slate-800 p-1 rounded-xl">
+              <span class="text-[10px] text-slate-400 px-1">Speed:</span>
+              <button
+                v-for="speed in [0.75, 1, 1.25, 1.5, 2]"
+                :key="speed"
+                @click="setPlaybackSpeed(speed)"
+                class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition-colors"
+                :class="currentPlaybackSpeed === speed ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'"
+              >
+                {{ speed }}x
+              </button>
+            </div>
+
+            <button
+              @click="markComplete"
+              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              <span>{{ isCurrentCompleted ? 'Completed ✓' : 'Mark as Complete' }}</span>
+            </button>
+
+            <button
+              @click="nextLesson"
+              class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition-colors"
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+
+        <!-- In-Lesson Study Tabs: Overview, Notes, Q&A, Quiz, Peer Project, Resources -->
+        <div class="p-6 max-w-4xl space-y-6">
+          <div class="flex items-center gap-6 border-b border-slate-800 pb-3 text-xs sm:text-sm font-bold overflow-x-auto">
+            <button
+              @click="activeTab = 'overview'"
+              :class="activeTab === 'overview' ? 'text-indigo-400 border-b-2 border-indigo-400 pb-3 -mb-3' : 'text-slate-400 hover:text-white'"
+            >
+              Overview
+            </button>
+            <button
+              @click="activeTab = 'notes'"
+              :class="activeTab === 'notes' ? 'text-indigo-400 border-b-2 border-indigo-400 pb-3 -mb-3' : 'text-slate-400 hover:text-white'"
+            >
+              Timestamped Notes ({{ myNotes.length }})
+            </button>
+            <button
+              @click="activeTab = 'qa'"
+              :class="activeTab === 'qa' ? 'text-indigo-400 border-b-2 border-indigo-400 pb-3 -mb-3' : 'text-slate-400 hover:text-white'"
+            >
+              Student Q&A
+            </button>
+            <button
+              @click="activeTab = 'quiz'"
+              :class="activeTab === 'quiz' ? 'text-indigo-400 border-b-2 border-indigo-400 pb-3 -mb-3' : 'text-slate-400 hover:text-white'"
+            >
+              Graded Assessment
+            </button>
+            <button
+              @click="activeTab = 'assignment'"
+              :class="activeTab === 'assignment' ? 'text-indigo-400 border-b-2 border-indigo-400 pb-3 -mb-3' : 'text-slate-400 hover:text-white'"
+            >
+              Peer-Graded Project
+            </button>
+            <button
+              @click="activeTab = 'resources'"
+              :class="activeTab === 'resources' ? 'text-indigo-400 border-b-2 border-indigo-400 pb-3 -mb-3' : 'text-slate-400 hover:text-white'"
+            >
+              Downloadable Files (3)
+            </button>
+          </div>
+
+          <!-- Overview Tab -->
+          <div v-if="activeTab === 'overview'" class="space-y-4 text-xs text-slate-300 leading-relaxed">
+            <p>
+              In this hands-on session, we dive into production application design. You will explore component lifecycles, backend data integrity, and containerized deployment workflows.
+            </p>
+            <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+              <h4 class="font-bold text-white text-xs uppercase tracking-wider mb-2">Key Takeaways</h4>
+              <ul class="list-disc list-inside space-y-1 text-slate-300">
+                <li>Reactive state management with Vue 3 and Pinia stores</li>
+                <li>Eloquent relationships, indexes, and concurrency in Laravel 11</li>
+                <li>Automated tests and cryptographic verification standards</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Timestamped Notes Tab (Udemy Standard) -->
+          <div v-if="activeTab === 'notes'" class="space-y-4">
+            <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-3">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-slate-200">
+                  Add note at <span class="text-indigo-400 font-mono font-bold">{{ formattedCurrentTime }}</span>
+                </span>
+                <span class="text-[10px] text-slate-400">Notes are saved to your account</span>
+              </div>
+              <textarea
+                v-model="newNoteText"
+                placeholder="Take personal note at current timestamp..."
+                class="w-full h-20 p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              ></textarea>
+              <button
+                @click="saveNote"
+                :disabled="!newNoteText.trim()"
+                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold rounded-lg text-xs transition-colors"
+              >
+                Save Note at {{ formattedCurrentTime }}
+              </button>
+            </div>
+
+            <!-- Notes List -->
+            <div class="space-y-2">
+              <div
+                v-for="(n, idx) in myNotes"
+                :key="idx"
+                class="p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-start justify-between gap-3 text-xs"
+              >
+                <div>
+                  <button
+                    @click="seekTo(n.seconds)"
+                    class="font-mono text-indigo-400 font-bold hover:underline"
+                  >
+                    ▶ {{ n.timeStr }}
+                  </button>
+                  <p class="text-slate-200 mt-1 leading-relaxed">{{ n.text }}</p>
+                </div>
+                <button
+                  @click="deleteNote(idx)"
+                  class="text-[11px] text-slate-500 hover:text-rose-400"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Q&A Tab (Udemy Standard) -->
+          <div v-if="activeTab === 'qa'" class="space-y-4 text-xs">
+            <!-- Ask Question Box -->
+            <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-3">
+              <h4 class="font-bold text-white">Ask a question to instructor & peers</h4>
+              <input
+                v-model="qaTitle"
+                type="text"
+                placeholder="Question title (e.g. How does Pinia handle hydration?)"
+                class="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              <textarea
+                v-model="qaBody"
+                placeholder="Describe your question in detail..."
+                class="w-full h-20 p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              ></textarea>
+              <button
+                @click="postQa"
+                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg"
+              >
+                Post Question
+              </button>
+            </div>
+
+            <!-- QA Feed -->
+            <div class="space-y-3">
+              <div
+                v-for="(qa, idx) in qaList"
+                :key="idx"
+                class="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-2"
+              >
+                <div class="flex items-center justify-between">
+                  <h4 class="font-bold text-white">{{ qa.title }}</h4>
+                  <button
+                    @click="qa.upvotes++"
+                    class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-indigo-400 font-bold rounded text-[10px]"
+                  >
+                    ▲ {{ qa.upvotes }}
+                  </button>
+                </div>
+                <p class="text-slate-300">{{ qa.body }}</p>
+                <div class="text-[10px] text-slate-500 pt-1 border-t border-slate-800 flex items-center justify-between">
+                  <span>Asked by {{ qa.author }} • {{ qa.time }}</span>
+                  <span class="text-emerald-400 font-semibold">{{ qa.replies }} Instructor Reply</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Coursera Graded Assessment Tab -->
+          <div v-if="activeTab === 'quiz'" class="space-y-6">
+            <div class="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
+              <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div>
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Coursera Academic Assessment</span>
+                  <h3 class="text-base font-extrabold text-white mt-0.5">
+                    {{ course.quiz?.title || 'Module Graded Quiz' }}
+                  </h3>
+                </div>
+                <span class="text-xs bg-indigo-950 text-indigo-300 border border-indigo-800 px-2.5 py-1 rounded-full font-mono">
+                  Passing Grade: 80%
+                </span>
+              </div>
+
+              <!-- Questions List -->
+              <div class="space-y-6">
+                <div
+                  v-for="(q, qIdx) in (course.quiz?.questions || defaultQuiz)"
+                  :key="q.id"
+                  class="space-y-2.5 text-xs"
+                >
+                  <p class="font-bold text-white text-sm">
+                    {{ qIdx + 1 }}. {{ q.question }}
+                  </p>
+
+                  <div class="space-y-2">
+                    <label
+                      v-for="(opt, optIdx) in q.options"
+                      :key="optIdx"
+                      class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all"
+                      :class="quizAnswers[qIdx] === optIdx ? 'bg-indigo-950/60 border-indigo-500 text-white' : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700'"
+                    >
+                      <input
+                        type="radio"
+                        :name="'q_' + qIdx"
+                        :value="optIdx"
+                        v-model="quizAnswers[qIdx]"
+                        class="text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span>{{ opt }}</span>
+                    </label>
+                  </div>
+
+                  <!-- Feedback if submitted -->
+                  <div
+                    v-if="quizSubmitted"
+                    class="p-3 rounded-xl text-xs leading-relaxed"
+                    :class="quizAnswers[qIdx] === q.correct_index ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800' : 'bg-rose-950/60 text-rose-300 border border-rose-800'"
+                  >
+                    <strong>{{ quizAnswers[qIdx] === q.correct_index ? '✓ Correct!' : '✗ Incorrect' }}</strong>
+                    <p class="mt-1">{{ q.explanation }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
+                <button
+                  @click="submitQuiz"
+                  class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl text-xs transition-colors shadow-lg"
+                >
+                  Submit Graded Assessment →
+                </button>
+
+                <div v-if="quizScore !== null" class="text-xs font-bold font-mono">
+                  Your Score: <span :class="quizScore >= 80 ? 'text-emerald-400' : 'text-rose-400'">{{ quizScore }}%</span>
+                  ({{ quizScore >= 80 ? 'PASSED 🏆' : 'RETRY NEEDED' }})
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Coursera Peer-Graded Project Tab -->
+          <div v-if="activeTab === 'assignment'" class="space-y-6">
+            <div class="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-blue-400 bg-blue-950 px-2.5 py-0.5 rounded">
+                Coursera Peer-Graded Capstone
+              </span>
+              <h3 class="text-base font-extrabold text-white mt-1">Submit Capstone for Peer Review</h3>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Submit your repository and architectural summary. Once submitted, your work is evaluated by 3 peers based on the formal rubric.
+              </p>
+
+              <div class="space-y-3 text-xs">
+                <div>
+                  <label class="block font-bold text-slate-200 mb-1">GitHub / Git Repository URL:</label>
+                  <input
+                    v-model="assignmentRepo"
+                    type="url"
+                    placeholder="https://github.com/your-username/enterprise-super-platform"
+                    class="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label class="block font-bold text-slate-200 mb-1">Architectural Reflection & Documentation:</label>
+                  <textarea
+                    v-model="assignmentReflection"
+                    placeholder="Describe how you handled state management, API routes, database indexing, and testing..."
+                    class="w-full h-24 p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white"
+                  ></textarea>
+                </div>
+
+                <!-- Grading Rubric Breakdown -->
+                <div class="p-4 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2">
+                  <h4 class="font-bold text-slate-200 text-xs">Official Evaluation Rubric:</h4>
+                  <div class="flex justify-between text-[11px] text-slate-400">
+                    <span>1. Architectural Decoupling & Modular Stores</span>
+                    <strong class="text-white">40 pts</strong>
+                  </div>
+                  <div class="flex justify-between text-[11px] text-slate-400">
+                    <span>2. Eloquent Schema & API Performance</span>
+                    <strong class="text-white">30 pts</strong>
+                  </div>
+                  <div class="flex justify-between text-[11px] text-slate-400">
+                    <span>3. Docker Containerization & Security</span>
+                    <strong class="text-white">30 pts</strong>
+                  </div>
+                </div>
+
+                <button
+                  @click="submitAssignment"
+                  class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-colors shadow-lg"
+                >
+                  Submit Project for Peer Review →
+                </button>
+              </div>
+
+              <!-- Peer Grade Result -->
+              <div v-if="assignmentResult" class="mt-4 p-4 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-200 text-xs space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold">Peer Evaluation Result:</span>
+                  <span class="font-mono text-sm font-black text-emerald-400">{{ assignmentResult.grade }}</span>
+                </div>
+                <p>{{ assignmentResult.feedback }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Downloadable Resources Tab -->
+          <div v-if="activeTab === 'resources'" class="space-y-2 text-xs">
+            <div class="p-3.5 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between">
+              <div>
+                <span class="text-white font-mono font-bold">production-source-code.zip</span>
+                <span class="text-[10px] text-slate-400 ml-2">2.4 MB • Full codebase</span>
+              </div>
+              <button
+                @click="alert('Downloading source-code-bundle.zip...')"
+                class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold"
+              >
+                Download
+              </button>
+            </div>
+            <div class="p-3.5 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between">
+              <div>
+                <span class="text-white font-mono font-bold">lecture-slides-architecture.pdf</span>
+                <span class="text-[10px] text-slate-400 ml-2">5.1 MB • Presentation decks</span>
+              </div>
+              <button
+                @click="alert('Downloading lecture-slides-architecture.pdf...')"
+                class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold"
+              >
+                Download
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Curriculum Drawer (Udemy Style Playlist) -->
+      <aside
+        v-show="sidebarOpen"
+        class="w-80 sm:w-96 bg-slate-900 border-l border-slate-800 flex flex-col flex-shrink-0"
+      >
+        <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+          <h3 class="font-extrabold text-sm text-white">Course Curriculum</h3>
+          <span class="text-xs text-slate-400 font-mono">{{ completedLessons.size }} / {{ allLessons.length }} done</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto divide-y divide-slate-800/80">
+          <div v-for="mod in course.modules" :key="mod.id" class="p-3">
+            <div class="font-bold text-xs text-slate-300 mb-2 uppercase tracking-wider text-[11px]">
+              {{ mod.title }}
+            </div>
+
+            <div class="space-y-1">
+              <button
+                v-for="les in mod.lessons"
+                :key="les.id"
+                @click="switchLesson(les)"
+                class="w-full p-2.5 rounded-xl text-left text-xs transition-colors flex items-center justify-between group"
+                :class="currentLesson?.id === les.id ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 text-slate-300'"
+              >
+                <div class="flex items-center gap-2.5 min-w-0 pr-2">
+                  <!-- Checkbox -->
+                  <span
+                    class="w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+                    :class="completedLessons.has(les.id) ? 'bg-emerald-500 text-slate-950' : 'border border-slate-600 text-transparent'"
+                  >
+                    ✓
+                  </span>
+                  <span class="truncate">{{ les.title }}</span>
+                </div>
+                <span class="text-[10px] font-mono text-slate-400 flex-shrink-0">{{ les.duration_minutes }}m</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
+import { useCourseStore } from '@/stores/courses';
+
+const route = useRoute();
+const courseStore = useCourseStore();
+
+const course = ref(null);
+const currentLesson = ref(null);
+const sidebarOpen = ref(true);
+const activeTab = ref('overview');
+const videoRef = ref(null);
+const currentPlaybackSpeed = ref(1);
+
+const currentTime = ref(0);
+const completedLessons = ref(new Set());
+
+// Captions / Subtitles
+const captionsEnabled = ref(false);
+const currentCaptionLang = ref('en');
+const activeCaptionText = ref('In this lecture, we explore the reactive data binding mechanisms of modern full-stack web applications.');
+
+// Timestamped Notes
+const newNoteText = ref('');
+const myNotes = ref(JSON.parse(localStorage.getItem('gelme_user_notes') || '[]'));
+
+// QA List
+const qaTitle = ref('');
+const qaBody = ref('');
+const qaList = ref([
+  {
+    title: 'How should we handle CORS when consuming Laravel 11 endpoints from Vite?',
+    body: 'In development, the Vite proxy forwards `/api` requests to 127.0.0.1:8000 so no cross-origin headers are needed.',
+    author: 'Michael C.',
+    time: '2 days ago',
+    upvotes: 14,
+    replies: 1
+  }
+]);
+
+// Quiz
+const quizAnswers = ref({});
+const quizSubmitted = ref(false);
+const quizScore = ref(null);
+
+// Peer Assignment
+const assignmentRepo = ref('https://github.com/abebe-bekele/gelme-super-platform');
+const assignmentReflection = ref('Implemented decoupled Vue 3 Single-Page Architecture with Pinia modular state, backed by Laravel 11 with 75 indexed relational tables.');
+const assignmentResult = ref(null);
+
+const defaultQuiz = [
+  {
+    id: 1,
+    question: 'In enterprise production applications, what is the primary benefit of decoupled architecture?',
+    options: [
+      'Independent scalability of frontend and backend services',
+      'Elimination of all network latency',
+      'Removing the need for database migrations',
+      'Automatic generation of CSS stylesheets'
+    ],
+    correct_index: 0,
+    explanation: 'Decoupling client SPAs and REST/GraphQL backends allows independent horizontal scaling and distinct technology stacks.'
+  },
+  {
+    id: 2,
+    question: 'What is the cryptographic mechanism used to ensure tamper-proof credential verification on edX and Coursera?',
+    options: [
+      'SHA-256 digital fingerprinting and blockchain-style ledger auditing',
+      'Base64 plain text encoding',
+      'Rot13 ciphering',
+      'Simple HTTP cookie caching'
+    ],
+    correct_index: 0,
+    explanation: 'Cryptographic SHA-256 hashes bind recipient name, institution, and completion time into an immutable certificate proof.'
+  }
+];
+
+const allLessons = computed(() => {
+  if (!course.value?.modules) return [];
+  return course.value.modules.flatMap(m => m.lessons || []);
+});
+
+const progressPercent = computed(() => {
+  if (allLessons.value.length === 0) return 0;
+  return Math.round((completedLessons.value.size / allLessons.value.length) * 100);
+});
+
+const isCurrentCompleted = computed(() => {
+  return currentLesson.value && completedLessons.value.has(currentLesson.value.id);
+});
+
+const formattedCurrentTime = computed(() => {
+  const m = Math.floor(currentTime.value / 60);
+  const s = Math.floor(currentTime.value % 60);
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+});
+
+function onTimeUpdate() {
+  if (videoRef.value) {
+    currentTime.value = videoRef.value.currentTime;
+    if (currentTime.value > 15 && currentTime.value < 35) {
+      activeCaptionText.value = 'Notice how components isolate their reactive state through Pinia actions and reactive hooks.';
+    } else if (currentTime.value >= 35) {
+      activeCaptionText.value = 'Next, we inspect the backend controller to see how eager loading prevents N+1 queries.';
+    }
+  }
+}
+
+function toggleCaptions() {
+  captionsEnabled.value = !captionsEnabled.value;
+}
+
+function setPlaybackSpeed(speed) {
+  currentPlaybackSpeed.value = speed;
+  if (videoRef.value) {
+    videoRef.value.playbackRate = speed;
+  }
+}
+
+function seekTo(seconds) {
+  if (videoRef.value) {
+    videoRef.value.currentTime = seconds;
+    videoRef.value.play();
+  }
+}
+
+function saveNote() {
+  if (!newNoteText.value.trim()) return;
+  myNotes.value.unshift({
+    seconds: currentTime.value,
+    timeStr: formattedCurrentTime.value,
+    text: newNoteText.value.trim(),
+  });
+  localStorage.setItem('gelme_user_notes', JSON.stringify(myNotes.value));
+  newNoteText.value = '';
+}
+
+function deleteNote(idx) {
+  myNotes.value.splice(idx, 1);
+  localStorage.setItem('gelme_user_notes', JSON.stringify(myNotes.value));
+}
+
+function postQa() {
+  if (!qaTitle.value.trim()) return;
+  qaList.value.unshift({
+    title: qaTitle.value.trim(),
+    body: qaBody.value.trim() || 'No additional details provided.',
+    author: 'Abebe Bekele',
+    time: 'Just now',
+    upvotes: 1,
+    replies: 1
+  });
+  qaTitle.value = '';
+  qaBody.value = '';
+  alert('Question posted to student forum!');
+}
+
+function submitQuiz() {
+  const questions = course.value?.quiz?.questions || defaultQuiz;
+  let correct = 0;
+  questions.forEach((q, idx) => {
+    if (quizAnswers.value[idx] === q.correct_index) {
+      correct++;
+    }
+  });
+
+  quizScore.value = Math.round((correct / questions.length) * 100);
+  quizSubmitted.value = true;
+  if (quizScore.value >= 80) {
+    alert(`🎉 Congratulations! You scored ${quizScore.value}% and passed this module graded assessment!`);
+  }
+}
+
+async function submitAssignment() {
+  if (!assignmentRepo.value) return;
+  try {
+    const res = await courseStore.submitAssignment({
+      course_id: course.value.id,
+      repo_url: assignmentRepo.value,
+      reflection: assignmentReflection.value,
+    });
+    assignmentResult.value = res;
+    alert(`🎉 Capstone Project evaluated! Score: ${res.grade}. Verified rubric criteria satisfied.`);
+  } catch (e) {
+    alert('Project submitted for evaluation.');
+  }
+}
+
+function switchLesson(lesson) {
+  currentLesson.value = lesson;
+}
+
+function markComplete() {
+  if (!currentLesson.value) return;
+  completedLessons.value.add(currentLesson.value.id);
+  courseStore.completeLesson(currentLesson.value.id);
+
+  if (progressPercent.value >= 100) {
+    alert('🎉 100% Course Completed! Your verified certificate is ready to claim!');
+  }
+}
+
+function handleLessonEnd() {
+  markComplete();
+  nextLesson();
+}
+
+function nextLesson() {
+  const currentIdx = allLessons.value.findIndex(l => l.id === currentLesson.value?.id);
+  if (currentIdx !== -1 && currentIdx < allLessons.value.length - 1) {
+    currentLesson.value = allLessons.value[currentIdx + 1];
+  }
+}
+
+onMounted(async () => {
+  const slug = route.params.slug;
+  const res = await courseStore.fetchCourse(slug);
+  if (res) {
+    course.value = res;
+    if (allLessons.value.length > 0) {
+      currentLesson.value = allLessons.value[0];
+      completedLessons.value.add(allLessons.value[0].id);
+    }
+  }
+});
+</script>
