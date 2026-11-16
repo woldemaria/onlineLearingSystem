@@ -152,9 +152,15 @@
             <template v-else>
               <router-link
                 to="/login"
-                class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm"
+                class="text-xs font-bold text-slate-700 hover:text-indigo-600 px-3 py-1.5 transition-colors hidden sm:block"
               >
                 Sign In
+              </router-link>
+              <router-link
+                to="/register"
+                class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm"
+              >
+                Join Free
               </router-link>
             </template>
           </div>

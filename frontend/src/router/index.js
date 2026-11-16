@@ -26,6 +26,7 @@ const routes = [
   { path: '/admin/users', name: 'AdminUsers', component: AdminUsers },
   { path: '/verify/:code?', name: 'CertificateVerification', component: CertificateVerification },
   { path: '/login', name: 'Login', component: Login },
+  { path: '/register', name: 'Register', component: Login },
 ];
 
 const router = createRouter({
