@@ -65,6 +65,13 @@
           </router-link>
 
           <router-link
+            to="/careers"
+            class="text-xs font-bold text-slate-700 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors hidden xl:block"
+          >
+            Careers
+          </router-link>
+
+          <router-link
             to="/verify"
             class="text-xs font-bold text-slate-700 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors hidden lg:block"
           >

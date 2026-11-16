@@ -347,14 +347,20 @@
 
           <div class="flex-shrink-0 flex flex-col sm:flex-row gap-3">
             <router-link
-              to="/verify"
-              class="px-6 py-3.5 bg-white hover:bg-slate-100 text-slate-900 font-bold rounded-xl text-sm transition-colors shadow-md text-center"
+              to="/careers"
+              class="px-5 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition-colors shadow-md text-center flex items-center justify-center gap-2"
             >
-              Verify a Certificate Now
+              <span>🎯 Career Aptitude & Hub</span>
+            </router-link>
+            <router-link
+              to="/verify"
+              class="px-5 py-3.5 bg-white hover:bg-slate-100 text-slate-900 font-bold rounded-xl text-sm transition-colors shadow-md text-center"
+            >
+              Verify Certificate
             </router-link>
             <router-link
               to="/courses"
-              class="px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition-colors shadow-md text-center"
+              class="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-sm transition-colors shadow-md text-center"
             >
               Start Learning
             </router-link>

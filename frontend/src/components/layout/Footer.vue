@@ -26,6 +26,7 @@
             <li><router-link to="/courses?type=cohort_based" class="hover:text-white transition-colors">University Specializations</router-link></li>
             <li><router-link to="/global-classroom" class="hover:text-emerald-400 font-medium transition-colors">Online Global Classroom (Live)</router-link></li>
             <li><router-link to="/verify" class="hover:text-white transition-colors">Verifiable Credentials</router-link></li>
+            <li><router-link to="/careers" class="hover:text-indigo-400 transition-colors">Career Resource Center</router-link></li>
           </ul>
         </div>
 
