@@ -95,6 +95,12 @@
           </div>
         </div>
 
+        <!-- Informational Notice (e.g. from Cart or Learn Player) -->
+        <div v-if="noticeMessage" class="mb-4 p-3 bg-indigo-950/70 border border-indigo-700/80 text-indigo-300 text-xs rounded-xl flex items-center gap-2">
+          <span>👋</span>
+          <span>{{ noticeMessage }}</span>
+        </div>
+
         <!-- Error / Status Notice -->
         <div v-if="errorMessage" class="mb-4 p-3 bg-rose-950/60 border border-rose-700 text-rose-300 text-xs rounded-xl flex items-center gap-2">
           <span>⚠️</span>
@@ -235,12 +241,20 @@ const password = ref('password123');
 const role = ref('student');
 const loading = ref(false);
 const errorMessage = ref('');
+const noticeMessage = ref(route.query.notice || '');
 
 watch(
   () => route.path,
   (newPath) => {
     isRegisterMode.value = newPath === '/register';
     errorMessage.value = '';
+  }
+);
+
+watch(
+  () => route.query.notice,
+  (newNotice) => {
+    noticeMessage.value = newNotice || '';
   }
 );
 
@@ -268,7 +282,9 @@ async function handleSubmit() {
     }
 
     if (result.success) {
-      if (authStore.isAdmin) {
+      if (route.query.redirect) {
+        router.push(route.query.redirect);
+      } else if (authStore.isAdmin) {
         router.push('/admin/users');
       } else if (authStore.isInstructor) {
         router.push('/instructor');

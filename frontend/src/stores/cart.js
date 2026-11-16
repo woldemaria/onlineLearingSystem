@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import { useAuthStore } from '@/stores/auth';
 
 export const useCartStore = defineStore('cart', () => {
   const items = ref(JSON.parse(localStorage.getItem('gelme_cart') || '[]'));
@@ -24,6 +25,13 @@ export const useCartStore = defineStore('cart', () => {
   }
 
   function addToCart(course) {
+    const authStore = useAuthStore();
+    if (!authStore.isAuthenticated) {
+      const redirectUrl = window.location.pathname;
+      window.location.href = `/login?redirect=${encodeURIComponent(redirectUrl)}&notice=${encodeURIComponent('Please sign in or create an account to add courses to your cart.')}`;
+      return false;
+    }
+
     if (!items.value.some(i => i.id === course.id)) {
       items.value.push({
         id: course.id,
@@ -36,6 +44,7 @@ export const useCartStore = defineStore('cart', () => {
       saveCart();
     }
     isCartOpen.value = true;
+    return true;
   }
 
   function removeFromCart(courseId) {

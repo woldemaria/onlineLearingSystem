@@ -50,7 +50,45 @@
       <div class="flex-1 flex flex-col overflow-y-auto bg-slate-950">
         <!-- Video Screen Container -->
         <div class="w-full bg-black flex items-center justify-center relative aspect-video max-h-[62vh]">
+          <!-- Paywall Lock Overlay if Not Enrolled / Unpaid -->
+          <div
+            v-if="requiresPayment"
+            class="absolute inset-0 z-30 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center text-white"
+          >
+            <div class="w-16 h-16 rounded-3xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-3xl mb-4 shadow-xl">
+              🔒
+            </div>
+            <span class="text-[10px] font-bold uppercase tracking-widest text-indigo-400 bg-indigo-950 px-3 py-1 rounded-full border border-indigo-800 mb-2">
+              Course Enrollment & Payment Required
+            </span>
+            <h2 class="text-xl sm:text-2xl font-black max-w-lg mb-2">
+              Unlock Full Access to {{ course?.title || 'this Masterclass' }}
+            </h2>
+            <p class="text-xs text-slate-400 max-w-md mb-6 leading-relaxed">
+              Enroll and pay ${{ course?.price || '19.99' }} USD to unlock all HD video lectures, downloadable PDF materials, and claim your verifiable certificate.
+            </p>
+
+            <div class="flex flex-col sm:flex-row items-center gap-3">
+              <button
+                @click="handleUnlockAndPay"
+                :disabled="unlocking"
+                class="px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-600 text-white font-black rounded-xl text-xs shadow-xl shadow-indigo-500/30 transition-all flex items-center gap-2"
+              >
+                <span v-if="unlocking" class="animate-spin">⏳</span>
+                <span>{{ unlocking ? 'Processing Payment & Enrollment...' : `Pay & Unlock Course ($${course?.price || '19.99'} USD) →` }}</span>
+              </button>
+
+              <router-link
+                :to="`/courses/${course?.slug}`"
+                class="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold rounded-xl text-xs border border-slate-700 transition-colors"
+              >
+                View Syllabus Details
+              </router-link>
+            </div>
+          </div>
+
           <video
+            v-else
             ref="videoRef"
             controls
             autoplay
@@ -62,7 +100,7 @@
 
           <!-- Captions Overlay -->
           <div
-            v-if="captionsEnabled"
+            v-if="captionsEnabled && !requiresPayment"
             class="absolute bottom-16 px-4 py-1.5 bg-black/80 text-amber-300 font-semibold rounded-lg text-xs sm:text-sm text-center max-w-xl backdrop-blur-sm pointer-events-none"
           >
             [{{ currentCaptionLang.toUpperCase() }}] {{ activeCaptionText }}
@@ -518,14 +556,65 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useCourseStore } from '@/stores/courses';
+import { useAuthStore } from '@/stores/auth';
 
 const route = useRoute();
+const router = useRouter();
 const courseStore = useCourseStore();
+const authStore = useAuthStore();
 
 const course = ref(null);
 const currentLesson = ref(null);
+const unlocking = ref(false);
+
+const isFreeCourse = computed(() => {
+  return course.value && (course.value.is_free || Number(course.value.price) <= 0);
+});
+
+const isUserEnrolled = computed(() => {
+  if (!course.value) return false;
+  if (isFreeCourse.value) return true;
+  if (course.value.is_enrolled) return true;
+  if (authStore.isAdmin) return true;
+  if (course.value.creator_id && authStore.user?.id === course.value.creator_id) return true;
+  return false;
+});
+
+const requiresPayment = computed(() => {
+  if (!course.value) return false;
+  if (isUserEnrolled.value) return false;
+  // If the lesson is marked as a free preview, allow playing that lesson
+  if (currentLesson.value?.is_free_preview) return false;
+  return true;
+});
+
+async function handleUnlockAndPay() {
+  if (!authStore.isAuthenticated) {
+    router.push({
+      path: '/login',
+      query: {
+        redirect: route.fullPath,
+        notice: 'Please sign in or create an account to purchase and unlock this course.',
+      },
+    });
+    return;
+  }
+
+  unlocking.value = true;
+  try {
+    await courseStore.enroll(course.value.id);
+    if (course.value) {
+      course.value.is_enrolled = true;
+    }
+    alert(`🎉 Payment of $${course.value.price} successful! The course and verifiable credential path are now unlocked.`);
+  } catch (err) {
+    alert('Failed to process course enrollment: ' + (err.message || 'Error'));
+  } finally {
+    unlocking.value = false;
+  }
+}
 
 const videoStreamSrc = computed(() => {
   const url = currentLesson.value?.video_url;
@@ -787,6 +876,20 @@ function handlePlayerKeydown(e) {
 
 onMounted(async () => {
   window.addEventListener('keydown', handlePlayerKeydown);
+
+  // Authentication check: Player requires an authenticated user account
+  if (!authStore.isAuthenticated) {
+    const slug = route.params.slug;
+    router.replace({
+      path: '/login',
+      query: {
+        redirect: `/learn/${slug}`,
+        notice: 'Please sign in or create an account to access the course learning studio.',
+      },
+    });
+    return;
+  }
+
   const slug = route.params.slug;
   const res = await courseStore.fetchCourse(slug);
   if (res) {

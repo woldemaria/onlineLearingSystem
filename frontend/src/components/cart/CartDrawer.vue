@@ -162,10 +162,12 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useCartStore } from '@/stores/cart';
 import { useCourseStore } from '@/stores/courses';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
 const cartStore = useCartStore();
 const courseStore = useCourseStore();
+const authStore = useAuthStore();
 
 const couponCode = ref('');
 const couponFeedback = ref('');
@@ -181,6 +183,18 @@ function handleCoupon() {
 }
 
 async function handleCheckout() {
+  if (!authStore.isAuthenticated) {
+    cartStore.isCartOpen = false;
+    router.push({
+      path: '/login',
+      query: {
+        redirect: '/courses',
+        notice: 'Please sign in or create an account to complete your course purchase.',
+      },
+    });
+    return;
+  }
+
   processing.value = true;
   try {
     // Enroll in all cart items

@@ -31,16 +31,42 @@
               @keyup.enter="handleSearch"
               type="text"
               placeholder="Search courses, specializations, degrees, or live languages..."
-              class="w-full pl-10 pr-4 py-2 text-xs bg-slate-100 hover:bg-slate-50 focus:bg-white border border-slate-200 focus:border-indigo-500 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+              class="w-full pl-10 pr-9 py-2 text-xs bg-slate-100 hover:bg-slate-50 focus:bg-white border border-slate-200 focus:border-indigo-500 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-slate-800 placeholder-slate-400"
             />
-            <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
+            <button
+              type="button"
+              @click="handleSearch"
+              class="w-7 h-7 text-slate-400 hover:text-indigo-600 absolute left-2 top-1.5 flex items-center justify-center transition-colors"
+              title="Search"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+            </button>
+            <button
+              v-if="searchQuery"
+              type="button"
+              @click="searchQuery = ''; handleSearch();"
+              class="w-5 h-5 text-slate-400 hover:text-slate-600 absolute right-2.5 top-2.5 flex items-center justify-center rounded-full hover:bg-slate-200 text-xs transition-colors"
+              title="Clear search"
+            >
+              ✕
+            </button>
           </div>
         </div>
 
         <!-- Navigation Links -->
         <nav class="flex items-center gap-1 sm:gap-2.5">
+          <!-- Mobile Search Toggle -->
+          <button
+            @click="mobileSearchOpen = !mobileSearchOpen"
+            class="lg:hidden p-2 text-slate-700 hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition-colors"
+            title="Toggle search"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </button>
           <!-- Online Global Classroom Badge Link -->
           <router-link
             to="/global-classroom"
@@ -150,39 +176,82 @@
               </button>
             </template>
             <template v-else>
-              <router-link
-                to="/login"
-                class="text-xs font-bold text-slate-700 hover:text-indigo-600 px-3 py-1.5 transition-colors hidden sm:block"
-              >
-                Sign In
-              </router-link>
-              <router-link
-                to="/register"
-                class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm"
-              >
-                Join Free
-              </router-link>
+              <div class="flex items-center gap-1.5 sm:gap-2">
+                <router-link
+                  to="/login"
+                  class="px-2.5 py-1.5 sm:px-3.5 sm:py-2 text-xs font-bold text-slate-700 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition-all border border-slate-200 whitespace-nowrap"
+                >
+                  Sign In
+                </router-link>
+                <router-link
+                  to="/register"
+                  class="px-3 py-1.5 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-indigo-500/20 whitespace-nowrap"
+                >
+                  Join Free
+                </router-link>
+              </div>
             </template>
           </div>
         </nav>
+      </div>
+
+      <!-- Mobile Expandable Search Bar Drawer -->
+      <div v-if="mobileSearchOpen" class="lg:hidden pb-3 pt-2 border-t border-slate-100">
+        <div class="relative w-full">
+          <input
+            v-model="searchQuery"
+            @keyup.enter="handleSearch(); mobileSearchOpen = false;"
+            type="text"
+            placeholder="Search courses, skills, degrees, or live languages..."
+            class="w-full pl-10 pr-9 py-2 text-xs bg-slate-100 focus:bg-white border border-slate-200 focus:border-indigo-500 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-800"
+          />
+          <button
+            type="button"
+            @click="handleSearch(); mobileSearchOpen = false;"
+            class="absolute left-3 top-2.5 text-slate-400 hover:text-indigo-600"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </button>
+          <button
+            v-if="searchQuery"
+            type="button"
+            @click="searchQuery = ''; handleSearch();"
+            class="absolute right-3 top-2 text-slate-400 hover:text-slate-600 text-xs"
+          >
+            ✕
+          </button>
+        </div>
       </div>
     </div>
   </header>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
 import { useCourseStore } from '@/stores/courses';
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 const cartStore = useCartStore();
 const courseStore = useCourseStore();
-const searchQuery = ref('');
+const searchQuery = ref(route.query.search || '');
 const searchInputRef = ref(null);
+const mobileSearchOpen = ref(false);
+
+watch(
+  () => route.query.search,
+  (newSearch) => {
+    if (newSearch !== undefined) {
+      searchQuery.value = newSearch || '';
+    }
+  }
+);
 
 function handleSearch() {
   if (searchQuery.value.trim()) {

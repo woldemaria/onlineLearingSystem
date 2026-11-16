@@ -16,7 +16,7 @@ class LearningController extends Controller
     public function enroll(Request $request, $courseId)
     {
         $course = Course::findOrFail($courseId);
-        $user = User::where('email', 'student@gelme.global')->first() ?? User::first();
+        $user = $request->user() ?? User::where('email', 'student@gelme.global')->first() ?? User::first();
 
         $totalLessons = $course->lessons()->count() ?: 3;
 
@@ -43,7 +43,7 @@ class LearningController extends Controller
 
     public function myCourses(Request $request)
     {
-        $user = User::where('email', 'student@gelme.global')->first() ?? User::first();
+        $user = $request->user() ?? User::where('email', 'student@gelme.global')->first() ?? User::first();
         $enrollments = Enrollment::where('user_id', $user->id)
             ->with(['course.institution', 'course.category', 'course.modules.lessons'])
             ->get();
@@ -90,7 +90,7 @@ class LearningController extends Controller
     public function completeLesson(Request $request, $lessonId)
     {
         $lesson = Lesson::findOrFail($lessonId);
-        $user = User::where('email', 'student@gelme.global')->first() ?? User::first();
+        $user = $request->user() ?? User::where('email', 'student@gelme.global')->first() ?? User::first();
 
         $enrollment = Enrollment::where('user_id', $user->id)
             ->where('course_id', $lesson->course_id)

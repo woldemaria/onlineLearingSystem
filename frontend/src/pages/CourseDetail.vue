@@ -477,11 +477,13 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useCourseStore } from '@/stores/courses';
 import { useCartStore } from '@/stores/cart';
+import { useAuthStore } from '@/stores/auth';
 
 const route = useRoute();
 const router = useRouter();
 const courseStore = useCourseStore();
 const cartStore = useCartStore();
+const authStore = useAuthStore();
 
 const course = ref(null);
 const expandAll = ref(true);
@@ -520,12 +522,32 @@ function openPreviewModal(lesson) {
 
 function addToCart() {
   if (!course.value) return;
+  if (!authStore.isAuthenticated) {
+    router.push({
+      path: '/login',
+      query: {
+        redirect: `/courses/${course.value.slug}`,
+        notice: 'Please sign in or register to add this course to your cart.',
+      },
+    });
+    return;
+  }
   cartStore.addToCart(course.value);
   previewModalOpen.value = false;
 }
 
 function addBundleToCart() {
   if (!course.value) return;
+  if (!authStore.isAuthenticated) {
+    router.push({
+      path: '/login',
+      query: {
+        redirect: `/courses/${course.value.slug}`,
+        notice: 'Please sign in or register to add this bundle to your cart.',
+      },
+    });
+    return;
+  }
   cartStore.addToCart(course.value);
   cartStore.addToCart({
     id: 99,
@@ -539,6 +561,16 @@ function addBundleToCart() {
 
 async function buyNow() {
   if (!course.value) return;
+  if (!authStore.isAuthenticated) {
+    router.push({
+      path: '/login',
+      query: {
+        redirect: `/courses/${course.value.slug}`,
+        notice: 'Please sign in or create an account to purchase and enroll in this course.',
+      },
+    });
+    return;
+  }
   await courseStore.enroll(course.value.id);
   alert('🎉 Instant Enrollment Successful! Redirecting to the interactive learning player...');
   router.push(`/learn/${course.value.slug}`);
@@ -546,6 +578,16 @@ async function buyNow() {
 
 async function auditCourse() {
   if (!course.value) return;
+  if (!authStore.isAuthenticated) {
+    router.push({
+      path: '/login',
+      query: {
+        redirect: `/courses/${course.value.slug}`,
+        notice: 'Please sign in or register to audit this course.',
+      },
+    });
+    return;
+  }
   await courseStore.enroll(course.value.id, 'audit');
   alert('📖 You are now auditing this course for free! You have full access to all lecture videos.');
   router.push(`/learn/${course.value.slug}`);

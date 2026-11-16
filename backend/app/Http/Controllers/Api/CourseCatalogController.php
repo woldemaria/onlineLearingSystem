@@ -99,7 +99,7 @@ class CourseCatalogController extends Controller
         ]);
     }
 
-    public function show($slug)
+    public function show(Request $request, $slug)
     {
         $course = Course::where('slug', $slug)
             ->with(['category', 'institution', 'creator.profile', 'modules.lessons'])
@@ -113,11 +113,31 @@ class CourseCatalogController extends Controller
             '1_star' => 0,
         ];
 
+        $isEnrolled = false;
+        $token = $request->bearerToken();
+        if ($token) {
+            $session = \App\Models\UserSession::with('user')
+                ->where('token', $token)
+                ->whereNull('revoked_at')
+                ->where('expires_at', '>', now())
+                ->first();
+            $authUser = $session?->user;
+            if ($authUser) {
+                $isEnrolled = \App\Models\Enrollment::where('user_id', $authUser->id)
+                    ->where('course_id', $course->id)
+                    ->exists();
+                if ($authUser->role === 'admin' || $authUser->id === $course->creator_id) {
+                    $isEnrolled = true;
+                }
+            }
+        }
+
         return response()->json([
             'course' => [
                 'id' => $course->id,
                 'title' => $course->title,
                 'slug' => $course->slug,
+                'is_enrolled' => $isEnrolled,
                 'subtitle' => $course->subtitle,
                 'description' => $course->description,
                 'category' => $course->category?->name ?? 'General',

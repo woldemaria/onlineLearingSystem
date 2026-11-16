@@ -215,7 +215,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useCourseStore } from '@/stores/courses';
 import { useCartStore } from '@/stores/cart';
@@ -229,6 +229,14 @@ const selectedCategory = ref('');
 const selectedLevel = ref('all');
 const selectedType = ref('all');
 const sortBy = ref('popular');
+
+watch(
+  () => route.query.search,
+  (newSearch) => {
+    searchQuery.value = newSearch || '';
+    applyFilters();
+  }
+);
 
 const sortedCourses = computed(() => {
   let list = [...courseStore.courses];
