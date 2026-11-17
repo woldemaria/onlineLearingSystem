@@ -48,7 +48,7 @@ $courses = Course::with(['category', 'institution', 'modules.lessons'])->get();
             $reply = "¡Hola! En **Online Global Classroom**, practicamos inmersión conversacional de 25 minutos con hablantes nativos.
 
 **Useful Conversational Phrases:**
-- *¿Podría explicarme esto con un ejemplo práctico?* (Could you explain this with a practical example?)
+- *¿Podría explicarme esto con un ejemplo practical?* (Could you explain this with a practical example?)
 - *¿Cuál es la diferencia entre 'por' y 'para'?*
 - *Estoy emocionado por participar en la sesión de hoy.* (I'm excited to join today's session.)
 
@@ -121,6 +121,91 @@ What would you like to explore or practice right now?";
                 'Practice Amharic greetings',
                 'How does certificate verification work?'
             ]
+        ]);
+    }
+
+    public function generateQuiz(Request $request)
+    {
+        $topic = $request->input('topic', 'General Web & Software Engineering');
+        $courseTitle = $request->input('course_title', 'Software Architecture');
+
+        $questions = [
+            [
+                'id' => 1,
+                'question' => "When optimizing state management in high-throughput applications, what is the primary benefit of fine-grained reactive subscriptions?",
+                'options' => [
+                    "It minimizes unnecessary DOM re-renders by updating only the components that read mutated values.",
+                    "It stores state directly in browser cookies for faster synchronization.",
+                    "It converts client-side state into SQL queries on every user interaction.",
+                    "It eliminates the need for HTTP authentication headers."
+                ],
+                'correct_index' => 0,
+                'explanation' => "Fine-grained reactivity (like Vue 3's proxy-based reactivity) tracks dependency getters and setters at the property level, ensuring that only components actually consuming the changed state are triggered to re-render."
+            ],
+            [
+                'id' => 2,
+                'question' => "In RESTful API design, which HTTP status code and header combination should be used to support chunked media streaming with timeline scrubbing (RFC 7233)?",
+                'options' => [
+                    "200 OK with 'Cache-Control: no-cache'",
+                    "206 Partial Content with 'Content-Range' and 'Accept-Ranges: bytes'",
+                    "304 Not Modified with 'ETag'",
+                    "416 Range Not Satisfiable without body"
+                ],
+                'correct_index' => 1,
+                'explanation' => "RFC 7233 defines HTTP 206 Partial Content with 'Content-Range: bytes START-END/TOTAL' so browsers can seek forward and backward through large video and audio files without buffering the whole file."
+            ],
+            [
+                'id' => 3,
+                'question' => "What cryptographic mechanism ensures that verifiable certificates cannot be forged or tampered with after issuance?",
+                'options' => [
+                    "Base64 encoding of the student name",
+                    "A digital signature combining issuer private key and SHA-256 hash registered on a verifiable ledger",
+                    "Storing certificates exclusively as uncompressed JPEG files",
+                    "Sending the certificate via standard unencrypted SMS"
+                ],
+                'correct_index' => 1,
+                'explanation' => "Verifiable credentials (following W3C and edX/Coursera specifications) use asymmetric cryptography where the issuer signs a SHA-256 digest of the credential payload, allowing instant public verification against the issuer's public key."
+            ]
+        ];
+
+        return response()->json([
+            'success' => true,
+            'topic' => $topic,
+            'course' => $courseTitle,
+            'generated_at' => now()->toIso8601String(),
+            'questions' => $questions
+        ]);
+    }
+
+    public function summarize(Request $request)
+    {
+        $lessonTitle = $request->input('lesson_title', 'Core Lecture Architecture');
+        $courseTitle = $request->input('course_title', 'Masterclass');
+
+        $summary = [
+            'title' => "AI Smart Summary: {$lessonTitle}",
+            'overview' => "This session focuses on industry-grade patterns, decoupling application layers, and ensuring zero-downtime scalability.",
+            'key_takeaways' => [
+                "Layered Architecture: Separation between controllers, service layers, and reactive state stores prevents tight coupling.",
+                "Performance First: Utilizing partial-content chunked streaming (HTTP 206) reduces video startup latency by up to 70%.",
+                "Cryptographic Integrity: All completion milestones are recorded with tamper-evident hashes for automated credentials.",
+            ],
+            'flashcards' => [
+                [
+                    'front' => "What is Partial Content (HTTP 206)?",
+                    'back' => "An HTTP status code indicating the server is fulfilling a partial GET request for byte ranges (RFC 7233)."
+                ],
+                [
+                    'front' => "Why use Pinia stores over raw global objects?",
+                    'back' => "Pinia provides type safety, devtools time-travel debugging, and SSR hydration resilience without global window pollution."
+                ]
+            ],
+            'action_item' => "Complete the interactive assessment in the next tab to cement your understanding before advancing."
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => $summary
         ]);
     }
 }

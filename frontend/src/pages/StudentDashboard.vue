@@ -94,6 +94,14 @@
         >
           Udemy Wishlist ({{ courseStore.wishlist.length }})
         </button>
+        <button
+          @click="tab = 'invoices'"
+          class="pb-3 transition-colors flex items-center gap-1.5"
+          :class="tab === 'invoices' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500 hover:text-slate-900'"
+        >
+          <span>🧾</span>
+          <span>Order History & Invoices ({{ invoicesList.length }})</span>
+        </button>
       </div>
 
       <!-- Enrolled Courses Tab -->
@@ -216,12 +224,83 @@
             </div>
           </div>
 
-          <router-link
-            :to="`/verify/${cert.code}`"
-            class="w-full block text-center py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors"
-          >
-            Verify Credential Ledger →
-          </router-link>
+          <div class="flex items-center gap-2">
+            <button
+              @click="openCertModal(cert)"
+              class="flex-1 py-2.5 px-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs transition-colors shadow-sm"
+            >
+              View & Print
+            </button>
+            <router-link
+              :to="`/verify/${cert.code}`"
+              class="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors"
+              title="Public Ledger"
+            >
+              Ledger →
+            </router-link>
+          </div>
+        </div>
+      </div>
+
+      <!-- Invoices & Order History Tab (Udemy / Coursera Standard) -->
+      <div v-if="tab === 'invoices'" class="space-y-6">
+        <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-4">
+            <div>
+              <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">
+                Financial Transactions & VAT
+              </span>
+              <h3 class="text-lg font-black text-slate-900 mt-1">Official Order Invoices & Receipts</h3>
+              <p class="text-xs text-slate-500 mt-0.5">
+                Download and print compliant tax receipts for all purchased courses, micro-credentials, and live sessions.
+              </p>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-xs text-slate-500">Total Lifetime Invoiced:</span>
+              <span class="text-base font-black text-emerald-600">$189.97 USD</span>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] border-y border-slate-200">
+                <tr>
+                  <th class="py-3 px-4">Invoice #</th>
+                  <th class="py-3 px-4">Date</th>
+                  <th class="py-3 px-4">Item & Specialization</th>
+                  <th class="py-3 px-4">Payment Method</th>
+                  <th class="py-3 px-4">Amount</th>
+                  <th class="py-3 px-4">Status</th>
+                  <th class="py-3 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 text-slate-700">
+                <tr v-for="inv in invoicesList" :key="inv.id" class="hover:bg-slate-50/70 transition-colors">
+                  <td class="py-3.5 px-4 font-mono font-bold text-slate-900">{{ inv.invoice_number }}</td>
+                  <td class="py-3.5 px-4 text-slate-500">{{ inv.date }}</td>
+                  <td class="py-3.5 px-4 font-bold text-slate-900">{{ inv.description }}</td>
+                  <td class="py-3.5 px-4 flex items-center gap-1.5">
+                    <span class="text-xs">💳</span>
+                    <span>{{ inv.payment_method }}</span>
+                  </td>
+                  <td class="py-3.5 px-4 font-black font-mono text-slate-900">${{ inv.amount.toFixed(2) }}</td>
+                  <td class="py-3.5 px-4">
+                    <span class="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-bold text-[10px]">
+                      PAID ✓
+                    </span>
+                  </td>
+                  <td class="py-3.5 px-4 text-right">
+                    <button
+                      @click="openInvoiceModal(inv)"
+                      class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg transition-colors text-xs"
+                    >
+                      View Receipt 🖨️
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -263,6 +342,141 @@
               title="Remove from Wishlist"
             >
               ✕
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Printable Official Invoice Modal -->
+    <div
+      v-if="showInvoiceModal && selectedInvoice"
+      class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+      @click.self="showInvoiceModal = false"
+    >
+      <div class="bg-white text-slate-900 rounded-3xl max-w-xl w-full p-8 sm:p-10 border border-slate-200 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+        <button
+          @click="showInvoiceModal = false"
+          class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm"
+        >
+          ✕
+        </button>
+
+        <!-- Invoice Header -->
+        <div class="flex items-center justify-between border-b pb-6 mb-6">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-lg">
+              G
+            </div>
+            <div>
+              <h2 class="font-black text-sm tracking-tight text-slate-900">GELME SUPER PLATFORM</h2>
+              <p class="text-[10px] text-slate-400">Official Tax Receipt & Order Invoice</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <span class="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-bold text-[10px]">
+              PAID IN FULL
+            </span>
+            <div class="text-[10px] text-slate-400 font-mono mt-1 font-bold">{{ selectedInvoice.invoice_number }}</div>
+          </div>
+        </div>
+
+        <!-- Billed to & Date -->
+        <div class="grid grid-cols-2 gap-4 text-xs mb-6 bg-slate-50 p-4 rounded-2xl">
+          <div>
+            <span class="text-[10px] uppercase font-bold text-slate-400">Billed To:</span>
+            <div class="font-bold text-slate-900 mt-0.5">{{ authStore.user?.name || 'Abebe Bekele' }}</div>
+            <div class="text-slate-500 text-[11px]">{{ authStore.user?.email || 'student@gelme.global' }}</div>
+          </div>
+          <div class="text-right">
+            <span class="text-[10px] uppercase font-bold text-slate-400">Order Details:</span>
+            <div class="text-slate-700 mt-0.5">Date: <strong>{{ selectedInvoice.date }}</strong></div>
+            <div class="text-slate-500 text-[11px]">Method: {{ selectedInvoice.payment_method }}</div>
+          </div>
+        </div>
+
+        <!-- Line Items -->
+        <div class="space-y-3 mb-6 text-xs">
+          <div class="flex justify-between py-2 border-b border-slate-100 font-bold text-slate-900">
+            <span>{{ selectedInvoice.description }}</span>
+            <span class="font-mono">${{ selectedInvoice.amount.toFixed(2) }}</span>
+          </div>
+          <div class="flex justify-between text-slate-500 text-[11px]">
+            <span>Standard VAT / Digital Services Tax (0%)</span>
+            <span>$0.00</span>
+          </div>
+          <div class="flex justify-between text-sm font-black text-slate-900 pt-2 border-t">
+            <span>Total Paid (USD):</span>
+            <span class="font-mono text-indigo-600">${{ selectedInvoice.amount.toFixed(2) }}</span>
+          </div>
+        </div>
+
+        <!-- Footer actions -->
+        <div class="pt-4 border-t flex items-center justify-between">
+          <span class="text-[10px] text-slate-400 font-mono">Auth Token: {{ selectedInvoice.auth_code }}</span>
+          <button
+            @click="printModal"
+            class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-indigo-500/20"
+          >
+            <span>🖨️</span>
+            <span>Print Receipt</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Printable Credential Certificate Modal -->
+    <div
+      v-if="showCertModal && selectedCert"
+      class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+      @click.self="showCertModal = false"
+    >
+      <div class="bg-white text-slate-900 rounded-3xl max-w-2xl w-full p-8 sm:p-12 border-4 border-amber-400 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+        <button
+          @click="showCertModal = false"
+          class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm"
+        >
+          ✕
+        </button>
+
+        <div class="text-center space-y-4">
+          <div class="w-14 h-14 mx-auto rounded-2xl bg-slate-950 text-white flex items-center justify-center font-black text-2xl shadow-xl">
+            G
+          </div>
+          <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">GELME Global University Consortium</span>
+          <h2 class="text-xs uppercase tracking-wider text-slate-500 font-bold">Official Credential of Completion</h2>
+          <p class="text-xs text-slate-500">This certifies that</p>
+          <h1 class="text-3xl font-serif font-black text-slate-900 italic">
+            {{ authStore.user?.name || 'Abebe Bekele' }}
+          </h1>
+          <p class="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
+            has satisfied all rigorous capstone assessments, module examinations, and verified academic credits for:
+          </p>
+          <h3 class="text-xl font-black text-indigo-950">
+            {{ selectedCert.title }}
+          </h3>
+          <p class="text-xs text-slate-500 font-medium">
+            Conferred with Grade: <strong class="text-emerald-700">{{ selectedCert.grade }}</strong> • Credits: <strong>{{ selectedCert.credits }}</strong>
+          </p>
+
+          <div class="pt-6 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+            <span>Code: <strong>{{ selectedCert.code }}</strong></span>
+            <span class="text-emerald-700 font-bold">Ledger Status: ACTIVE ✓</span>
+          </div>
+
+          <div class="pt-4 flex items-center justify-end gap-3">
+            <router-link
+              :to="`/verify/${selectedCert.code}`"
+              class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs"
+            >
+              Public Ledger View
+            </router-link>
+            <button
+              @click="printModal"
+              class="px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs shadow-md shadow-amber-500/20 flex items-center gap-1.5"
+            >
+              <span>🖨️</span>
+              <span>Print Certificate (PDF)</span>
             </button>
           </div>
         </div>
@@ -329,6 +543,55 @@ const credentialsList = [
     credits: '2.5 CEU'
   }
 ];
+
+const invoicesList = ref([
+  {
+    id: 1,
+    invoice_number: 'INV-2026-88412',
+    date: 'Nov 12, 2026',
+    description: 'Full-Stack Web Development & Cloud Architecture Masterclass',
+    amount: 19.99,
+    payment_method: 'Stripe Credit Card (•••• 4242)',
+    auth_code: 'AUTH_STRIPE_9801_SUCCESS'
+  },
+  {
+    id: 2,
+    invoice_number: 'INV-2026-87140',
+    date: 'Nov 08, 2026',
+    description: 'Online Global Classroom: 5-Session Native Immersion Bundle',
+    amount: 89.99,
+    payment_method: 'Chapa Direct Pay / Telebirr',
+    auth_code: 'AUTH_CHAPA_TX_77192_COMPLETED'
+  },
+  {
+    id: 3,
+    invoice_number: 'INV-2026-84902',
+    date: 'Oct 28, 2026',
+    description: 'Generative AI, Large Language Models & Prompt Engineering Masterclass',
+    amount: 79.99,
+    payment_method: 'Visa Platinum (•••• 1092)',
+    auth_code: 'AUTH_VISA_CAPSTONE_2910'
+  }
+]);
+
+const showInvoiceModal = ref(false);
+const selectedInvoice = ref(null);
+const showCertModal = ref(false);
+const selectedCert = ref(null);
+
+function openInvoiceModal(inv) {
+  selectedInvoice.value = inv;
+  showInvoiceModal.value = true;
+}
+
+function openCertModal(cert) {
+  selectedCert.value = cert;
+  showCertModal.value = true;
+}
+
+function printModal() {
+  window.print();
+}
 
 onMounted(() => {
   courseStore.fetchMyLearning();

@@ -160,6 +160,117 @@
             Admin Console
           </router-link>
 
+          <!-- Notification Bell Trigger -->
+          <div class="relative">
+            <button
+              @click="notificationStore.isDropdownOpen = !notificationStore.isDropdownOpen"
+              class="relative p-2 rounded-xl transition-colors"
+              :class="isDarkNav ? 'text-slate-300 hover:text-amber-400 hover:bg-slate-800' : 'text-slate-700 hover:text-amber-500 hover:bg-slate-50'"
+              title="Notifications"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+              </svg>
+              <span
+                v-if="notificationStore.unreadCount > 0"
+                class="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-slate-950 rounded-full text-[9px] font-black flex items-center justify-center shadow-md animate-pulse"
+              >
+                {{ notificationStore.unreadCount }}
+              </span>
+            </button>
+
+            <!-- Notification Dropdown Panel -->
+            <div
+              v-if="notificationStore.isDropdownOpen"
+              class="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl shadow-2xl border z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
+              :class="isDarkNav ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'"
+            >
+              <div class="p-3.5 border-b flex items-center justify-between" :class="isDarkNav ? 'border-slate-800 bg-slate-950/60' : 'border-slate-100 bg-slate-50'">
+                <div class="flex items-center gap-2">
+                  <span class="font-extrabold text-xs uppercase tracking-wider">Notifications</span>
+                  <span
+                    v-if="notificationStore.unreadCount > 0"
+                    class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-slate-950"
+                  >
+                    {{ notificationStore.unreadCount }} new
+                  </span>
+                </div>
+                <button
+                  v-if="notificationStore.unreadCount > 0"
+                  @click="notificationStore.markAllAsRead"
+                  class="text-[11px] font-bold text-indigo-500 hover:text-indigo-400 hover:underline"
+                >
+                  Mark all read
+                </button>
+              </div>
+
+              <div class="max-h-80 overflow-y-auto divide-y" :class="isDarkNav ? 'divide-slate-800' : 'divide-slate-100'">
+                <div
+                  v-if="notificationStore.notifications.length === 0"
+                  class="p-6 text-center text-xs text-slate-500"
+                >
+                  No notifications right now.
+                </div>
+                <div
+                  v-for="item in notificationStore.notifications"
+                  :key="item.id"
+                  class="p-3.5 text-xs transition-colors relative flex items-start gap-3"
+                  :class="[
+                    !item.read_at
+                      ? (isDarkNav ? 'bg-slate-800/60' : 'bg-indigo-50/50')
+                      : (isDarkNav ? 'hover:bg-slate-800/30' : 'hover:bg-slate-50')
+                  ]"
+                >
+                  <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-bold bg-white/10 border border-white/10 shadow-sm">
+                    <span v-if="item.type === 'achievement'">🏆</span>
+                    <span v-else-if="item.type === 'classroom'">🌐</span>
+                    <span v-else-if="item.type === 'qa'">💬</span>
+                    <span v-else>📢</span>
+                  </div>
+
+                  <div class="flex-1 min-w-0 pr-4">
+                    <div class="flex items-center justify-between gap-1 mb-0.5">
+                      <h4 class="font-bold text-xs truncate" :class="isDarkNav ? 'text-slate-100' : 'text-slate-900'">
+                        {{ item.title }}
+                      </h4>
+                      <span v-if="!item.read_at" class="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0"></span>
+                    </div>
+                    <p class="text-[11px] leading-relaxed line-clamp-2" :class="isDarkNav ? 'text-slate-400' : 'text-slate-600'">
+                      {{ item.message }}
+                    </p>
+                    <div class="mt-2 flex items-center justify-between">
+                      <router-link
+                        v-if="item.action_url"
+                        :to="item.action_url"
+                        @click="notificationStore.markAsRead(item.id); notificationStore.isDropdownOpen = false;"
+                        class="text-[11px] font-bold text-indigo-500 hover:text-indigo-400 hover:underline"
+                      >
+                        {{ item.action_label || 'View Details' }} →
+                      </router-link>
+                      <button
+                        @click="notificationStore.deleteNotification(item.id)"
+                        class="text-[10px] text-slate-400 hover:text-rose-500 transition-colors ml-auto"
+                        title="Dismiss"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-2 border-t text-center" :class="isDarkNav ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100 bg-slate-50'">
+                <router-link
+                  to="/dashboard"
+                  @click="notificationStore.isDropdownOpen = false"
+                  class="text-[11px] font-bold text-slate-500 hover:text-indigo-500"
+                >
+                  View Learning Activity Dashboard
+                </router-link>
+              </div>
+            </div>
+          </div>
+
           <!-- Wishlist Heart Trigger (Udemy style) -->
           <router-link
             to="/dashboard"
@@ -291,12 +402,14 @@ import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
 import { useCourseStore } from '@/stores/courses';
+import { useNotificationStore } from '@/stores/notification';
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const cartStore = useCartStore();
 const courseStore = useCourseStore();
+const notificationStore = useNotificationStore();
 const searchQuery = ref(route.query.search || '');
 const searchInputRef = ref(null);
 const mobileSearchOpen = ref(false);
@@ -339,21 +452,32 @@ function handleGlobalKeydown(e) {
     }
   }
 
-  // Pressing 'Escape' blurs search input or closes cart drawer
+  // Pressing 'Escape' blurs search input or closes cart/notification drawer
   if (e.key === 'Escape') {
     if (cartStore.isCartOpen) {
       cartStore.isCartOpen = false;
+    } else if (notificationStore.isDropdownOpen) {
+      notificationStore.isDropdownOpen = false;
     } else if (searchInputRef.value && document.activeElement === searchInputRef.value) {
       searchInputRef.value.blur();
     }
   }
 }
 
+function handleDocumentClick(e) {
+  if (notificationStore.isDropdownOpen && !e.target.closest('.relative')) {
+    notificationStore.isDropdownOpen = false;
+  }
+}
+
 onMounted(() => {
   window.addEventListener('keydown', handleGlobalKeydown);
+  document.addEventListener('click', handleDocumentClick);
+  notificationStore.fetchNotifications();
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown);
+  document.removeEventListener('click', handleDocumentClick);
 });
 </script>

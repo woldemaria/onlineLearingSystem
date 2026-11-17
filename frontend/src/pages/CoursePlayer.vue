@@ -26,14 +26,14 @@
         </div>
 
         <!-- Claim Certificate Button (edX / Coursera / Udemy) -->
-        <router-link
+        <button
           v-if="progressPercent >= 100"
-          to="/verify/GELME-CERT-2026-X892K"
-          class="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-lg text-xs flex items-center gap-1 shadow-md shadow-amber-500/20 animate-bounce"
+          @click="showCertModal = true"
+          class="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-lg text-xs flex items-center gap-1 shadow-md shadow-amber-500/20 animate-bounce cursor-pointer"
         >
           <span>🏆</span>
           <span>View Verified Certificate</span>
-        </router-link>
+        </button>
 
         <button
           @click="sidebarOpen = !sidebarOpen"
@@ -216,6 +216,57 @@
             <p>
               In this hands-on session, we dive into production application design. You will explore component lifecycles, backend data integrity, and containerized deployment workflows.
             </p>
+
+            <!-- AI Smart Study Assistant Generator -->
+            <div class="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-500/30 space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm">✨</span>
+                  <span class="font-extrabold text-white text-xs uppercase tracking-wider">AI Lesson Smart Summarizer</span>
+                </div>
+                <button
+                  @click="generateAiSummary"
+                  :disabled="loadingSummary"
+                  class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors shadow-md"
+                >
+                  <span v-if="loadingSummary" class="animate-spin text-[10px]">⏳</span>
+                  <span>{{ loadingSummary ? 'Synthesizing...' : 'Generate AI Summary & Flashcards' }}</span>
+                </button>
+              </div>
+
+              <!-- AI Generated Summary View -->
+              <div v-if="aiSummary" class="space-y-3 pt-2 border-t border-indigo-500/20">
+                <p class="text-slate-200 leading-relaxed">{{ aiSummary.overview }}</p>
+
+                <div class="space-y-1.5">
+                  <h5 class="text-[11px] font-bold uppercase tracking-wider text-indigo-300">Key Architectural Takeaways:</h5>
+                  <ul class="list-disc list-inside space-y-1 text-slate-300">
+                    <li v-for="(item, idx) in aiSummary.key_takeaways" :key="idx">{{ item }}</li>
+                  </ul>
+                </div>
+
+                <!-- Interactive Flashcards -->
+                <div v-if="aiSummary.flashcards?.length" class="space-y-2 pt-1">
+                  <h5 class="text-[11px] font-bold uppercase tracking-wider text-indigo-300">Quick Review Flashcards (Click to Flip):</h5>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div
+                      v-for="(fc, fcIdx) in aiSummary.flashcards"
+                      :key="fcIdx"
+                      @click="flippedCards[fcIdx] = !flippedCards[fcIdx]"
+                      class="p-3 bg-slate-950/80 border border-slate-800 rounded-xl cursor-pointer hover:border-indigo-500/50 transition-all select-none min-h-[75px] flex flex-col justify-between"
+                    >
+                      <span class="text-[9px] uppercase font-bold text-indigo-400">
+                        {{ flippedCards[fcIdx] ? 'Answer (Click to flip back)' : 'Prompt (Click to reveal answer)' }}
+                      </span>
+                      <p class="text-xs font-semibold" :class="flippedCards[fcIdx] ? 'text-emerald-300' : 'text-slate-200'">
+                        {{ flippedCards[fcIdx] ? fc.back : fc.front }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
               <h4 class="font-bold text-white text-xs uppercase tracking-wider mb-2">Key Takeaways</h4>
               <ul class="list-disc list-inside space-y-1 text-slate-300">
@@ -327,23 +378,40 @@
           <!-- Coursera Graded Assessment Tab -->
           <div v-if="activeTab === 'quiz'" class="space-y-6">
             <div class="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
-              <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-3">
                 <div>
                   <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Coursera Academic Assessment</span>
                   <h3 class="text-base font-extrabold text-white mt-0.5">
-                    {{ course.quiz?.title || 'Module Graded Quiz' }}
+                    {{ isAiQuizActive ? `✨ AI Adaptive Quiz: ${currentLesson?.title || course.title}` : (course.quiz?.title || 'Module Graded Quiz') }}
                   </h3>
                 </div>
-                <span class="text-xs bg-indigo-950 text-indigo-300 border border-indigo-800 px-2.5 py-1 rounded-full font-mono">
-                  Passing Grade: 80%
-                </span>
+                <div class="flex items-center gap-2">
+                  <button
+                    @click="generateAiQuiz"
+                    :disabled="loadingQuiz"
+                    class="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-all shadow-md shadow-purple-500/20"
+                  >
+                    <span v-if="loadingQuiz" class="animate-spin text-[10px]">⏳</span>
+                    <span>{{ loadingQuiz ? 'Generating...' : '✨ Generate AI Quiz' }}</span>
+                  </button>
+                  <button
+                    v-if="isAiQuizActive"
+                    @click="resetToStandardQuiz"
+                    class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg text-xs transition-colors"
+                  >
+                    Standard Quiz
+                  </button>
+                  <span class="text-xs bg-indigo-950 text-indigo-300 border border-indigo-800 px-2.5 py-1 rounded-full font-mono">
+                    Pass: 80%
+                  </span>
+                </div>
               </div>
 
               <!-- Questions List -->
               <div class="space-y-6">
                 <div
-                  v-for="(q, qIdx) in (course.quiz?.questions || defaultQuiz)"
-                  :key="q.id"
+                  v-for="(q, qIdx) in activeQuizQuestions"
+                  :key="q.id || qIdx"
                   class="space-y-2.5 text-xs"
                 >
                   <p class="font-bold text-white text-sm">
@@ -625,12 +693,67 @@
         </div>
       </aside>
     </div>
+
+    <!-- Verifiable Certificate Modal (Printable) -->
+    <div
+      v-if="showCertModal"
+      class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+      @click.self="showCertModal = false"
+    >
+      <div class="bg-white text-slate-900 rounded-3xl max-w-2xl w-full p-8 sm:p-10 border-4 border-amber-400 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+        <button
+          @click="showCertModal = false"
+          class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm transition-colors"
+        >
+          ✕
+        </button>
+
+        <div class="text-center space-y-4">
+          <div class="w-12 h-12 mx-auto rounded-2xl bg-slate-950 text-white flex items-center justify-center font-black text-xl shadow-lg">
+            G
+          </div>
+          <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">GELME Global University Consortium</span>
+          <h2 class="text-xs uppercase tracking-wider text-slate-500 font-bold">Certificate of Completion & Excellence</h2>
+          <p class="text-xs text-slate-500">This certifies that</p>
+          <h1 class="text-2xl sm:text-3xl font-serif font-black text-slate-900 italic">
+            {{ authStore.user?.name || 'Abebe Bekele' }}
+          </h1>
+          <p class="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
+            has successfully satisfied all rigorous curriculum specifications and capstone assessments for:
+          </p>
+          <h3 class="text-lg font-black text-indigo-900">
+            {{ course.title }}
+          </h3>
+          <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+            <span>Verified Code: <strong>GELME-CERT-2026-X892K</strong></span>
+            <span class="text-emerald-700 font-bold">Ledger Status: ACTIVE ✓</span>
+          </div>
+
+          <div class="pt-4 flex items-center justify-end gap-3">
+            <router-link
+              to="/verify/GELME-CERT-2026-X892K"
+              class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs"
+            >
+              Public Ledger View
+            </router-link>
+            <button
+              @click="printCertificate"
+              class="px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs shadow-md shadow-amber-500/20 flex items-center gap-1.5"
+            >
+              <span>🖨️</span>
+              <span>Print Certificate (PDF)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import axios from 'axios';
 import { useCourseStore } from '@/stores/courses';
 import { useAuthStore } from '@/stores/auth';
 
@@ -736,6 +859,97 @@ const qaList = ref([
 const quizAnswers = ref({});
 const quizSubmitted = ref(false);
 const quizScore = ref(null);
+
+// AI Study & Quiz Assistants
+const loadingSummary = ref(false);
+const aiSummary = ref(null);
+const flippedCards = ref({});
+const loadingQuiz = ref(false);
+const isAiQuizActive = ref(false);
+const aiQuestions = ref([]);
+const showCertModal = ref(false);
+
+const activeQuizQuestions = computed(() => {
+  if (isAiQuizActive.value && aiQuestions.value.length > 0) {
+    return aiQuestions.value;
+  }
+  return course.value?.quiz?.questions || defaultQuiz;
+});
+
+async function generateAiSummary() {
+  loadingSummary.value = true;
+  try {
+    const res = await axios.post('/api/ai/summarize', {
+      lesson_title: currentLesson.value?.title || 'Key Architectural Concepts',
+      course_title: course.value?.title || 'Course'
+    });
+    aiSummary.value = res.data.data;
+    flippedCards.value = {};
+  } catch (err) {
+    aiSummary.value = {
+      overview: `Smart overview for ${currentLesson.value?.title || 'this session'}: Focuses on decoupled component models, resilient state hydration, and partial-content media optimization.`,
+      key_takeaways: [
+        'Fine-grained reactivity minimizes browser layout passes and rerenders.',
+        'API routes leverage RFC 7233 partial content headers for instantaneous video timeline seeking.',
+        'Cryptographic hashes certify student achievement on the public ledger.'
+      ],
+      flashcards: [
+        { front: 'What is HTTP 206 Partial Content?', back: 'An RFC 7233 standard status allowing byte-range requests for smooth media streaming.' },
+        { front: 'Why store authentication in Pinia with Bearer interceptors?', back: 'Guarantees secure decoupled communication across frontend and backend services.' }
+      ]
+    };
+  } finally {
+    loadingSummary.value = false;
+  }
+}
+
+async function generateAiQuiz() {
+  loadingQuiz.value = true;
+  quizSubmitted.value = false;
+  quizAnswers.value = {};
+  quizScore.value = null;
+  try {
+    const res = await axios.post('/api/ai/quiz-generate', {
+      topic: currentLesson.value?.title || course.value?.title,
+      course_title: course.value?.title
+    });
+    if (res.data?.questions) {
+      aiQuestions.value = res.data.questions;
+      isAiQuizActive.value = true;
+    }
+  } catch (err) {
+    aiQuestions.value = [
+      {
+        id: 101,
+        question: 'Which HTTP status code is used for timeline-scrubbed chunked video streaming?',
+        options: ['200 OK', '206 Partial Content', '404 Not Found', '500 Server Error'],
+        correct_index: 1,
+        explanation: 'HTTP 206 Partial Content fulfills byte-range video streaming.'
+      },
+      {
+        id: 102,
+        question: 'How are GELME certificates tamper-proofed across university partners?',
+        options: ['Standard cookies', 'SHA-256 cryptographic hashes signed on the ledger', 'Unprotected local storage', 'Plain text logs'],
+        correct_index: 1,
+        explanation: 'SHA-256 hashes bind student ID and course metadata into an immutable signature.'
+      }
+    ];
+    isAiQuizActive.value = true;
+  } finally {
+    loadingQuiz.value = false;
+  }
+}
+
+function resetToStandardQuiz() {
+  isAiQuizActive.value = false;
+  quizSubmitted.value = false;
+  quizAnswers.value = {};
+  quizScore.value = null;
+}
+
+function printCertificate() {
+  window.print();
+}
 
 // Peer Assignment
 const assignmentRepo = ref('https://github.com/abebe-bekele/gelme-super-platform');
@@ -850,7 +1064,7 @@ function postQa() {
 }
 
 function submitQuiz() {
-  const questions = course.value?.quiz?.questions || defaultQuiz;
+  const questions = activeQuizQuestions.value;
   let correct = 0;
   questions.forEach((q, idx) => {
     if (quizAnswers.value[idx] === q.correct_index) {

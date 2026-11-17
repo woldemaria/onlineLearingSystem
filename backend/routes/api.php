@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\AiTutorController;
 use App\Http\Controllers\Api\InstructorController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\MediaStreamController;
+use App\Http\Controllers\Api\NotificationController;
 
 // Authentication
 Route::prefix('auth')->group(function () {
@@ -48,8 +49,16 @@ Route::post('/placement-test', [GlobalClassroomController::class, 'placementTest
 // Credentials & Certificates (edX & Coursera)
 Route::get('/certificates/{code}', [CredentialController::class, 'verify']);
 
-// Generative AI Study Companion
+// Generative AI Study Companion & Quiz Generation
 Route::post('/ai/tutor', [AiTutorController::class, 'ask']);
+Route::post('/ai/quiz-generate', [AiTutorController::class, 'generateQuiz']);
+Route::post('/ai/summarize', [AiTutorController::class, 'summarize']);
+
+// Notifications Hub
+Route::get('/notifications', [NotificationController::class, 'index']);
+Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
 
 // Media Streaming (RFC 7233 partial content chunked streaming for video timeline scrubbing)
 Route::get('/media/stream/{path}', [MediaStreamController::class, 'stream'])->where('path', '.*');
