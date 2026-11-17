@@ -68,6 +68,10 @@ Route::prefix('instructor')->group(function () {
     Route::get('/stats', [InstructorController::class, 'stats']);
     Route::get('/courses', [InstructorController::class, 'courses']);
 
+    Route::middleware('api.auth')->group(function () {
+        Route::post('/activate', [InstructorController::class, 'activateInstructor']);
+    });
+
     Route::middleware(['api.auth', 'role:instructor,admin'])->group(function () {
         Route::post('/upload', [InstructorController::class, 'uploadMedia']);
         Route::post('/courses', [InstructorController::class, 'storeCourse']);

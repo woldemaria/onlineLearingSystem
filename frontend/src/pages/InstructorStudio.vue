@@ -4,23 +4,50 @@
       <!-- Authorization Status Alert if not instructor -->
       <div
         v-if="!authStore.isInstructor"
-        class="mb-8 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        class="mb-8 p-5 bg-gradient-to-r from-amber-500/10 via-slate-800 to-indigo-950/30 border border-amber-500/30 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4"
       >
-        <div class="flex items-center gap-3">
-          <span class="text-2xl">🔐</span>
+        <div class="flex items-center gap-3.5">
+          <span class="text-3xl">🧑‍🏫</span>
           <div>
-            <h3 class="text-sm font-bold text-amber-300">Instructor Account Required</h3>
-            <p class="text-xs text-slate-300">
-              You are currently logged in as a learner (<strong class="text-white">{{ authStore.user?.email || 'Guest' }}</strong>). Switch to an instructor profile to upload course videos and publish curricula.
+            <h3 class="text-sm font-bold text-amber-300">
+              {{ authStore.isAuthenticated ? 'Instructor Verification Required' : 'Instructor Sign In Required' }}
+            </h3>
+            <p class="text-xs text-slate-300 mt-0.5">
+              <template v-if="authStore.isAuthenticated">
+                Signed in as <strong class="text-white">{{ authStore.user?.name }}</strong> ({{ authStore.user?.email }}). Activate your verified instructor status below to upload video lectures, attach PDF syllabi, and receive revenue payouts.
+              </template>
+              <template v-else>
+                You are currently viewing as a guest. Sign in with an instructor profile or switch to a demo educator account to create courses.
+              </template>
             </p>
           </div>
         </div>
-        <button
-          @click="switchToInstructor"
-          class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black rounded-xl transition-all shadow-md whitespace-nowrap"
-        >
-          1-Click Switch to Demo Instructor (Prof. Sarah Chen)
-        </button>
+
+        <div class="flex flex-wrap items-center gap-2.5">
+          <button
+            v-if="authStore.isAuthenticated"
+            @click="activateInstructor"
+            :disabled="activating"
+            class="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-black rounded-xl transition-all shadow-md flex items-center gap-1.5 whitespace-nowrap"
+          >
+            <span v-if="activating" class="animate-spin">⏳</span>
+            <span>{{ activating ? 'Activating...' : '✨ 1-Click Upgrade to Certified Instructor' }}</span>
+          </button>
+          <router-link
+            v-else
+            to="/login?redirect=/instructor"
+            class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl transition-all shadow-md whitespace-nowrap"
+          >
+            Sign In / Join as Instructor →
+          </router-link>
+
+          <button
+            @click="switchToInstructor"
+            class="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold rounded-xl border border-amber-500/30 transition-all whitespace-nowrap"
+          >
+            Demo: Prof. Sarah Chen
+          </button>
+        </div>
       </div>
 
       <!-- Header -->
@@ -36,7 +63,7 @@
         </div>
 
         <button
-          @click="showCreateModal = true"
+          @click="handleOpenCreateModal"
           class="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2"
         >
           <span>+</span>
@@ -440,9 +467,11 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { useAuthStore } from '@/stores/auth';
 
+const router = useRouter();
 const authStore = useAuthStore();
 
 const stats = ref(null);
@@ -523,6 +552,15 @@ function removeLesson(mIdx, lIdx) {
   }
 }
 
+function getAuthHeaders(extra = {}) {
+  const token = authStore.token || localStorage.getItem('gelme_auth_token');
+  const headers = { ...extra };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 async function uploadLessonMedia(e, mIdx, lIdx, type) {
   const file = e.target.files[0];
   if (!file) return;
@@ -534,7 +572,7 @@ async function uploadLessonMedia(e, mIdx, lIdx, type) {
     formData.append('type', type);
 
     const res = await axios.post('/api/instructor/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: getAuthHeaders({ 'Content-Type': 'multipart/form-data' }),
     });
 
     const targetLesson = modules.value[mIdx].lessons[lIdx];
@@ -563,6 +601,7 @@ const pdfFileName = ref('');
 const pdfFileSize = ref('');
 
 const publishing = ref(false);
+const activating = ref(false);
 const uploadError = ref('');
 
 async function handleVideoFile(e) {
@@ -577,7 +616,7 @@ async function handleVideoFile(e) {
     formData.append('type', 'video');
 
     const res = await axios.post('/api/instructor/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: getAuthHeaders({ 'Content-Type': 'multipart/form-data' }),
     });
 
     videoUploadedUrl.value = res.data.url;
@@ -602,7 +641,7 @@ async function handlePdfFile(e) {
     formData.append('type', 'document');
 
     const res = await axios.post('/api/instructor/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: getAuthHeaders({ 'Content-Type': 'multipart/form-data' }),
     });
 
     pdfUploadedUrl.value = res.data.url;
@@ -652,7 +691,9 @@ async function submitCreate() {
       payload.pdf_name = pdfFileName.value || 'Course_Guide.pdf';
     }
 
-    const res = await axios.post('/api/instructor/courses', payload);
+    const res = await axios.post('/api/instructor/courses', payload, {
+      headers: getAuthHeaders(),
+    });
     alert(`🎉 "${res.data.course.title}" published successfully to GELME!`);
 
     showCreateModal.value = false;
@@ -671,16 +712,59 @@ async function submitCreate() {
 
 async function loadCourses() {
   try {
-    const res = await axios.get('/api/instructor/courses');
+    const res = await axios.get('/api/instructor/courses', {
+      headers: getAuthHeaders(),
+    });
     coursesList.value = res.data.courses;
   } catch (err) {
     console.error('Failed to load instructor courses:', err);
   }
 }
 
+async function activateInstructor() {
+  activating.value = true;
+  try {
+    const res = await axios.post('/api/instructor/activate', {}, {
+      headers: getAuthHeaders(),
+    });
+    if (res.data?.user) {
+      authStore.setSession(res.data.user, authStore.token);
+    } else if (authStore.user) {
+      authStore.user.role = 'instructor';
+      localStorage.setItem('gelme_user', JSON.stringify(authStore.user));
+    }
+    alert(`🎉 Success! Your account is now verified as a Certified Instructor.`);
+    await loadCourses();
+  } catch (err) {
+    alert('Failed to activate instructor profile: ' + (err.response?.data?.message || err.message));
+  } finally {
+    activating.value = false;
+  }
+}
+
 async function switchToInstructor() {
   await authStore.login('sarah.chen@gelme.global', 'password123');
   await loadCourses();
+}
+
+function handleOpenCreateModal() {
+  if (!authStore.isAuthenticated) {
+    router.push({
+      path: '/login',
+      query: {
+        redirect: '/instructor',
+        notice: 'Please sign in or register with an instructor account to upload courses.'
+      }
+    });
+    return;
+  }
+  if (!authStore.isInstructor) {
+    if (confirm('An instructor profile is required to upload course videos and publish syllabi. Would you like to activate your instructor status now?')) {
+      activateInstructor();
+    }
+    return;
+  }
+  showCreateModal.value = true;
 }
 
 onMounted(async () => {

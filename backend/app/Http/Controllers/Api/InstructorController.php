@@ -13,6 +13,7 @@ use App\Models\Lesson;
 use App\Models\Media;
 use App\Models\User;
 use App\Models\VirtualClassroom;
+use App\Models\Instructor;
 
 class InstructorController extends Controller
 {
@@ -335,6 +336,39 @@ class InstructorController extends Controller
             'success' => true,
             'message' => 'Course curriculum updated successfully!',
             'first_lesson_id' => $firstLessonId,
+        ]);
+    }
+
+    public function activateInstructor(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $instructor = Instructor::firstOrCreate([
+            'user_id' => $user->id,
+        ], [
+            'is_verified' => true,
+            'is_active' => true,
+            'designation' => 'Lead Instructor & Course Creator',
+            'rating' => 5.0,
+            'bio' => 'Certified Master Educator on GELME Super Platform.',
+            'verification_status' => 'approved',
+            'verified_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Instructor account activated successfully for {$user->name}.",
+            'role' => $user->fresh()->role,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->fresh()->role,
+                'avatar' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=4f46e5&color=fff',
+            ]
         ]);
     }
 }

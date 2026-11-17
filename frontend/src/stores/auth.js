@@ -74,6 +74,11 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  function updateUser(userData) {
+    user.value = { ...user.value, ...userData };
+    localStorage.setItem('gelme_user', JSON.stringify(user.value));
+  }
+
   async function logout() {
     try {
       if (token.value) {
@@ -94,5 +99,7 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     fetchMe,
     logout,
+    setSession,
+    updateUser,
   };
 });
