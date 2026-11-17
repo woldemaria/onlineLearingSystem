@@ -42,6 +42,13 @@ Route::middleware('api.auth')->group(function () {
 // Online Global Classrooms (Live 25-Min Immersion, Packages, & Placement Test)
 Route::get('/classrooms', [GlobalClassroomController::class, 'index']);
 Route::get('/classrooms/{slug}', [GlobalClassroomController::class, 'show']);
+Route::post('/classrooms/{slug}/join', [GlobalClassroomController::class, 'join']);
+Route::post('/classrooms/{slug}/leave', [GlobalClassroomController::class, 'leave']);
+Route::get('/classrooms/{slug}/attendance', [GlobalClassroomController::class, 'attendance']);
+Route::get('/classrooms/{slug}/chat', [GlobalClassroomController::class, 'getChat']);
+Route::post('/classrooms/{slug}/chat', [GlobalClassroomController::class, 'sendChat']);
+Route::post('/classrooms/{slug}/hand-raise', [GlobalClassroomController::class, 'toggleHandRaise']);
+Route::post('/classrooms/{slug}/media-state', [GlobalClassroomController::class, 'updateMediaState']);
 Route::post('/classrooms/book', [GlobalClassroomController::class, 'book']);
 Route::get('/packages', [GlobalClassroomController::class, 'packages']);
 Route::post('/placement-test', [GlobalClassroomController::class, 'placementTest']);

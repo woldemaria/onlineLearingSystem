@@ -104,6 +104,9 @@ class User extends Authenticatable
         if (str_contains($email, 'admin') || $this->organizations()->wherePivot('role', 'admin')->exists()) {
             return 'admin';
         }
+        if (str_contains($email, 'student')) {
+            return 'student';
+        }
         if (
             $this->instructor()->exists() ||
             $this->institutions()->wherePivot('role', 'instructor')->exists() ||

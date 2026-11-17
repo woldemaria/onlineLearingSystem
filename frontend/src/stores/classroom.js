@@ -10,6 +10,19 @@ export const useClassroomStore = defineStore('classroom', () => {
   const placementResult = ref(JSON.parse(localStorage.getItem('gelme_placement_result') || 'null'));
   const loading = ref(false);
 
+  // Live session state
+  const isJoined = ref(false);
+  const liveRoster = ref([]);
+  const liveAttendance = ref(null);
+  const userAttendance = ref(null);
+  const chatMessages = ref([]);
+  const handRaised = ref(false);
+
+  function getAuthHeaders() {
+    const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('access_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
   async function fetchClassrooms(filters = {}) {
     loading.value = true;
     try {
@@ -26,7 +39,7 @@ export const useClassroomStore = defineStore('classroom', () => {
   async function fetchRoom(slug) {
     loading.value = true;
     try {
-      const res = await axios.get(`/api/classrooms/${slug}`);
+      const res = await axios.get(`/api/classrooms/${slug}`, { headers: getAuthHeaders() });
       activeRoom.value = res.data.classroom;
       return res.data.classroom;
     } catch (e) {
@@ -34,6 +47,87 @@ export const useClassroomStore = defineStore('classroom', () => {
       return null;
     } finally {
       loading.value = false;
+    }
+  }
+
+  async function joinRoom(slug) {
+    try {
+      const res = await axios.post(`/api/classrooms/${slug}/join`, {}, { headers: getAuthHeaders() });
+      isJoined.value = true;
+      liveRoster.value = res.data.roster || [];
+      userAttendance.value = res.data.attendance || null;
+      return res.data;
+    } catch (e) {
+      console.error('Failed to join classroom:', e);
+      throw e;
+    }
+  }
+
+  async function leaveRoom(slug) {
+    try {
+      const res = await axios.post(`/api/classrooms/${slug}/leave`, {}, { headers: getAuthHeaders() });
+      isJoined.value = false;
+      return res.data;
+    } catch (e) {
+      console.error('Failed to leave classroom:', e);
+    }
+  }
+
+  async function fetchAttendance(slug) {
+    try {
+      const res = await axios.get(`/api/classrooms/${slug}/attendance`, { headers: getAuthHeaders() });
+      liveAttendance.value = res.data;
+      if (res.data.user_attendance) {
+        userAttendance.value = res.data.user_attendance;
+      }
+      return res.data;
+    } catch (e) {
+      console.error('Failed to fetch attendance:', e);
+    }
+  }
+
+  async function fetchChat(slug) {
+    try {
+      const res = await axios.get(`/api/classrooms/${slug}/chat`, { headers: getAuthHeaders() });
+      chatMessages.value = res.data.messages || [];
+      return chatMessages.value;
+    } catch (e) {
+      console.error('Failed to fetch classroom chat:', e);
+    }
+  }
+
+  async function sendChatMessage(slug, text) {
+    try {
+      const res = await axios.post(`/api/classrooms/${slug}/chat`, { text }, { headers: getAuthHeaders() });
+      if (res.data.message) {
+        chatMessages.value.push(res.data.message);
+      }
+      if (res.data.instructor_reply) {
+        chatMessages.value.push(res.data.instructor_reply);
+      }
+      return res.data;
+    } catch (e) {
+      console.error('Failed to send classroom chat:', e);
+      throw e;
+    }
+  }
+
+  async function toggleHandRaise(slug) {
+    try {
+      const res = await axios.post(`/api/classrooms/${slug}/hand-raise`, {}, { headers: getAuthHeaders() });
+      handRaised.value = res.data.hand_raised;
+      return res.data;
+    } catch (e) {
+      console.error('Failed to toggle hand raise:', e);
+    }
+  }
+
+  async function updateMediaState(slug, payload) {
+    try {
+      const res = await axios.post(`/api/classrooms/${slug}/media-state`, payload, { headers: getAuthHeaders() });
+      return res.data;
+    } catch (e) {
+      console.error('Failed to update media state:', e);
     }
   }
 
@@ -64,7 +158,7 @@ export const useClassroomStore = defineStore('classroom', () => {
       const res = await axios.post('/api/classrooms/book', {
         classroom_id: classroomId,
         ...bookingDetails,
-      });
+      }, { headers: getAuthHeaders() });
 
       const found = classrooms.value.find(c => c.id === classroomId);
       if (found) {
@@ -94,8 +188,21 @@ export const useClassroomStore = defineStore('classroom', () => {
     myBookings,
     placementResult,
     loading,
+    isJoined,
+    liveRoster,
+    liveAttendance,
+    userAttendance,
+    chatMessages,
+    handRaised,
     fetchClassrooms,
     fetchRoom,
+    joinRoom,
+    leaveRoom,
+    fetchAttendance,
+    fetchChat,
+    sendChatMessage,
+    toggleHandRaise,
+    updateMediaState,
     fetchPackages,
     submitPlacementTest,
     bookRoom,
