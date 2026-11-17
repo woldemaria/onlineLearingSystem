@@ -49,8 +49,10 @@ Route::post('/placement-test', [GlobalClassroomController::class, 'placementTest
 // Credentials & Certificates (edX & Coursera)
 Route::get('/certificates/{code}', [CredentialController::class, 'verify']);
 
-// Generative AI Study Companion & Quiz Generation
+// Generative AI Study Companion & Context-Aware Tutoring
 Route::post('/ai/tutor', [AiTutorController::class, 'ask']);
+Route::get('/ai/history', [AiTutorController::class, 'history']);
+Route::post('/ai/clear', [AiTutorController::class, 'clearSession']);
 Route::post('/ai/quiz-generate', [AiTutorController::class, 'generateQuiz']);
 Route::post('/ai/summarize', [AiTutorController::class, 'summarize']);
 
