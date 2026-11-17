@@ -82,7 +82,13 @@ class AdminUserController extends Controller
         $user = User::findOrFail($id);
         $newRole = $validated['role'];
 
-        if ($newRole === 'instructor') {
+        $user->role = $newRole;
+        $user->save();
+
+        if ($newRole === 'admin') {
+            $user->organizations()->syncWithoutDetaching([1 => ['role' => 'admin', 'status' => 'active']]);
+        } elseif ($newRole === 'instructor') {
+            $user->organizations()->detach(1);
             Instructor::firstOrCreate(['user_id' => $user->id], [
                 'is_verified' => true,
                 'is_active' => true,
@@ -90,6 +96,7 @@ class AdminUserController extends Controller
                 'rating' => 5.0,
             ]);
         } elseif ($newRole === 'student') {
+            $user->organizations()->detach(1);
             Student::firstOrCreate(['user_id' => $user->id], [
                 'institution_id' => 1,
                 'student_number' => 'STU-' . strtoupper(Str::random(8)),

@@ -9,10 +9,23 @@ use App\Models\User;
 
 class NotificationController extends Controller
 {
-    public function index(Request $request)
+    protected function resolveUser(Request $request): User
     {
         $user = $request->user();
-        $userId = $user ? $user->id : 4; // Default to student if not logged in
+        if (!$user && $token = $request->bearerToken()) {
+            $session = \App\Models\UserSession::with('user')->where('token', $token)->where('expires_at', '>', now())->first();
+            $user = $session?->user;
+        }
+        if (!$user) {
+            $user = User::where('email', 'student@gelme.global')->first() ?? User::find(4) ?? User::first();
+        }
+        return $user;
+    }
+
+    public function index(Request $request)
+    {
+        $user = $this->resolveUser($request);
+        $userId = $user->id;
 
         // If no notifications exist for this user, seed sensible LMS defaults
         if (Notification::where('user_id', $userId)->count() === 0) {
@@ -38,8 +51,8 @@ class NotificationController extends Controller
 
     public function markAsRead(Request $request, $id)
     {
-        $user = $request->user();
-        $userId = $user ? $user->id : 4;
+        $user = $this->resolveUser($request);
+        $userId = $user->id;
 
         $notification = Notification::where('id', $id)
             ->where('user_id', $userId)
@@ -61,8 +74,8 @@ class NotificationController extends Controller
 
     public function markAllAsRead(Request $request)
     {
-        $user = $request->user();
-        $userId = $user ? $user->id : 4;
+        $user = $this->resolveUser($request);
+        $userId = $user->id;
 
         Notification::where('user_id', $userId)
             ->whereNull('read_at')
@@ -76,8 +89,8 @@ class NotificationController extends Controller
 
     public function destroy(Request $request, $id)
     {
-        $user = $request->user();
-        $userId = $user ? $user->id : 4;
+        $user = $this->resolveUser($request);
+        $userId = $user->id;
 
         $notification = Notification::where('id', $id)
             ->where('user_id', $userId)

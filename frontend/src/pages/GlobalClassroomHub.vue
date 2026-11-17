@@ -3,6 +3,21 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <!-- Hub Header Banner (Online Global Classroom Style) -->
       <div class="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 p-8 sm:p-12 rounded-3xl border border-emerald-800/60 shadow-2xl mb-12 relative overflow-hidden">
+        <!-- Interactive WebGL2 GridScan Canvas -->
+        <div class="absolute inset-0 z-0 opacity-60 pointer-events-auto">
+          <GridScan
+            :cells="8"
+            :scan-duration="3.2"
+            :scan-delay="1.5"
+            :scan-color="'#10b981'"
+            :lines-color="'#064e3b'"
+            :depth="3.2"
+            :glow="0.9"
+            :parallax="1.0"
+            :reflection="0.3"
+            :interactive="true"
+          />
+        </div>
         <div class="absolute -right-20 -top-20 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
         <div class="max-w-3xl relative z-10">
@@ -425,6 +440,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useClassroomStore } from '@/stores/classroom';
 import { useCartStore } from '@/stores/cart';
+import GridScan from '@/components/common/GridScan';
 
 const router = useRouter();
 const classroomStore = useClassroomStore();

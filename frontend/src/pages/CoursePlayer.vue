@@ -549,10 +549,10 @@
                 :href="currentLesson.content.pdf_url"
                 target="_blank"
                 download
-                class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-md"
+                class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-md cursor-pointer"
               >
                 <span>⬇️</span>
-                <span>Download PDF</span>
+                <span>Download Material</span>
               </a>
             </div>
 

@@ -76,38 +76,47 @@ export const useCourseStore = defineStore('courses', () => {
     }
   }
 
+  function getAuthHeaders() {
+    const token = localStorage.getItem('gelme_auth_token') || localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('access_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
   async function fetchMyLearning() {
     try {
-      const res = await axios.get('/api/my-learning');
-      myEnrollments.value = res.data.enrollments;
+      const res = await axios.get('/api/my-learning', { headers: getAuthHeaders() });
+      myEnrollments.value = res.data.enrollments || [];
+      return myEnrollments.value;
     } catch (e) {
       console.error('Failed to fetch my learning:', e);
+      return [];
     }
   }
 
   async function enroll(courseId, type = 'self') {
     try {
-      const res = await axios.post(`/api/courses/${courseId}/enroll`, { type });
+      const res = await axios.post(`/api/courses/${courseId}/enroll`, { type }, { headers: getAuthHeaders() });
       await fetchMyLearning();
       return res.data;
     } catch (e) {
       console.error('Failed to enroll:', e);
+      throw e;
     }
   }
 
   async function completeLesson(lessonId) {
     try {
-      const res = await axios.post(`/api/lessons/${lessonId}/complete`);
+      const res = await axios.post(`/api/lessons/${lessonId}/complete`, {}, { headers: getAuthHeaders() });
       await fetchMyLearning();
       return res.data;
     } catch (e) {
       console.error('Failed to complete lesson:', e);
+      throw e;
     }
   }
 
   async function applyFinancialAid(payload) {
     try {
-      const res = await axios.post('/api/financial-aid', payload);
+      const res = await axios.post('/api/financial-aid', payload, { headers: getAuthHeaders() });
       await fetchMyLearning();
       return res.data;
     } catch (e) {
@@ -118,7 +127,7 @@ export const useCourseStore = defineStore('courses', () => {
 
   async function submitAssignment(payload) {
     try {
-      const res = await axios.post('/api/assignments/submit', payload);
+      const res = await axios.post('/api/assignments/submit', payload, { headers: getAuthHeaders() });
       return res.data;
     } catch (e) {
       console.error('Assignment submission failed:', e);
@@ -148,9 +157,8 @@ export const useCourseStore = defineStore('courses', () => {
   }
 
   async function addCourseReview(slug, reviewData) {
-    const token = localStorage.getItem('gelme_auth_token');
     const res = await axios.post(`/api/courses/${slug}/reviews`, reviewData, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: getAuthHeaders()
     });
     return res.data;
   }

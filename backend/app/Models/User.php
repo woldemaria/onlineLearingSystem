@@ -18,6 +18,7 @@ class User extends Authenticatable
         'uuid',
         'name',
         'email',
+        'role',
         'phone',
         'password',
         'display_name',
@@ -98,15 +99,17 @@ class User extends Authenticatable
         return $this->hasOne(Student::class);
     }
 
-    public function getRoleAttribute(): string
+    public function getRoleAttribute($value = null): string
     {
-        $email = strtolower($this->email);
+        if (!empty($value)) {
+            return $value;
+        }
+
+        $email = strtolower($this->email ?? '');
         if (str_contains($email, 'admin') || $this->organizations()->wherePivot('role', 'admin')->exists()) {
             return 'admin';
         }
-        if (str_contains($email, 'student')) {
-            return 'student';
-        }
+
         if (
             $this->instructor()->exists() ||
             $this->institutions()->wherePivot('role', 'instructor')->exists() ||
@@ -117,6 +120,7 @@ class User extends Authenticatable
         ) {
             return 'instructor';
         }
+
         return 'student';
     }
 
@@ -140,7 +144,7 @@ class User extends Authenticatable
             return true;
         }
 
-        if (in_array('student', $roles)) {
+        if (in_array('student', $roles) && $currentRole === 'student') {
             return true;
         }
 

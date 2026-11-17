@@ -16,10 +16,11 @@ export const useClassroomStore = defineStore('classroom', () => {
   const liveAttendance = ref(null);
   const userAttendance = ref(null);
   const chatMessages = ref([]);
+  const liveReactions = ref([]);
   const handRaised = ref(false);
 
   function getAuthHeaders() {
-    const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('access_token');
+    const token = localStorage.getItem('gelme_auth_token') || localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('access_token');
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
@@ -105,10 +106,37 @@ export const useClassroomStore = defineStore('classroom', () => {
       if (res.data.instructor_reply) {
         chatMessages.value.push(res.data.instructor_reply);
       }
+      if (res.data.peer_reply) {
+        chatMessages.value.push(res.data.peer_reply);
+      }
       return res.data;
     } catch (e) {
       console.error('Failed to send classroom chat:', e);
       throw e;
+    }
+  }
+
+  async function sendReaction(slug, emoji) {
+    try {
+      const res = await axios.post(`/api/classrooms/${slug}/reactions`, { emoji }, { headers: getAuthHeaders() });
+      if (res.data.reaction) {
+        liveReactions.value.push(res.data.reaction);
+      }
+      return res.data;
+    } catch (e) {
+      console.error('Failed to send reaction:', e);
+    }
+  }
+
+  async function fetchReactions(slug) {
+    try {
+      const res = await axios.get(`/api/classrooms/${slug}/reactions`, { headers: getAuthHeaders() });
+      if (res.data.reactions) {
+        liveReactions.value = res.data.reactions;
+      }
+      return liveReactions.value;
+    } catch (e) {
+      console.error('Failed to fetch reactions:', e);
     }
   }
 
@@ -193,6 +221,7 @@ export const useClassroomStore = defineStore('classroom', () => {
     liveAttendance,
     userAttendance,
     chatMessages,
+    liveReactions,
     handRaised,
     fetchClassrooms,
     fetchRoom,
@@ -201,6 +230,8 @@ export const useClassroomStore = defineStore('classroom', () => {
     fetchAttendance,
     fetchChat,
     sendChatMessage,
+    sendReaction,
+    fetchReactions,
     toggleHandRaise,
     updateMediaState,
     fetchPackages,

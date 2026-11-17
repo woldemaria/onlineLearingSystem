@@ -344,15 +344,15 @@
                         </div>
                       </div>
 
-                      <!-- Lesson PDF Material Upload -->
+                      <!-- Lesson Study Material Upload (PDF, Slides, Code, Notes) -->
                       <div class="p-2 bg-slate-950/60 rounded-lg border border-slate-800">
                         <div class="flex items-center justify-between mb-1">
-                          <span class="text-emerald-300 font-bold">📄 PDF Syllabus/Notes</span>
+                          <span class="text-emerald-300 font-bold">📄 Study Material / Slides / Code</span>
                           <span v-if="les.pdf_url" class="text-emerald-400 text-[10px]">✓ Loaded</span>
                         </div>
                         <input
                           type="file"
-                          accept="application/pdf"
+                          accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip,.tar,.gz,.png,.jpg,.jpeg,.mp3,.md"
                           @change="e => uploadLessonMedia(e, mIdx, lIdx, 'document')"
                           class="block w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:bg-emerald-600 file:text-white cursor-pointer"
                         />
@@ -413,17 +413,17 @@
                 </div>
               </div>
 
-              <!-- PDF Material Upload Dropzone -->
+              <!-- Study Material Upload Dropzone -->
               <div class="p-3.5 bg-slate-800/80 rounded-2xl border border-slate-700">
                 <label class="block font-bold text-slate-200 mb-1 flex items-center justify-between">
-                  <span>📄 Lesson PDF Guide / Study Slides (.pdf)</span>
+                  <span>📄 Lesson Materials, Slides, Code or Notes (.pdf, .pptx, .docx, .zip)</span>
                   <span v-if="pdfUploadedUrl" class="text-emerald-400 text-[10px] font-bold">✓ Ready</span>
                 </label>
 
                 <div class="flex items-center gap-3 mt-2">
                   <input
                     type="file"
-                    accept="application/pdf"
+                    accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip,.tar,.gz,.png,.jpg,.jpeg,.mp3,.md"
                     @change="handlePdfFile"
                     class="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer"
                   />
@@ -432,7 +432,7 @@
                 <!-- Uploading indicator -->
                 <div v-if="pdfUploading" class="mt-2 text-emerald-400 text-[11px] flex items-center gap-2">
                   <span class="animate-spin">⏳</span>
-                  <span>Uploading PDF document...</span>
+                  <span>Uploading study material to secure storage...</span>
                 </div>
 
                 <div v-if="pdfUploadedUrl" class="mt-2 p-2 bg-slate-900 rounded-lg text-[11px] text-slate-300 flex items-center justify-between">

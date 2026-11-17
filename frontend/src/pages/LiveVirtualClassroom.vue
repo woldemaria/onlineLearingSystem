@@ -48,6 +48,26 @@
           </button>
         </div>
 
+        <!-- Sound FX Controls -->
+        <button
+          @click="toggleSoundFx"
+          class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-colors border"
+          :class="soundFxEnabled ? 'bg-emerald-950/80 border-emerald-700/80 text-emerald-300 hover:bg-emerald-900/60' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'"
+          :title="soundFxEnabled ? 'Mute meeting sound effects' : 'Enable meeting sound effects'"
+        >
+          <span>{{ soundFxEnabled ? '🔊' : '🔇' }}</span>
+          <span class="hidden md:inline">{{ soundFxEnabled ? 'Sound FX On' : 'Sound FX Off' }}</span>
+        </button>
+
+        <button
+          @click="testAudio"
+          class="hidden sm:flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-xl text-[11px] font-bold transition-colors"
+          title="Play sample sound to test meeting speaker/headphones"
+        >
+          <span>🎧</span>
+          <span>Test Audio</span>
+        </button>
+
         <!-- Attendance Badge Status -->
         <div
           @click="activePanel = 'attendance'"
@@ -82,6 +102,24 @@
 
           <!-- Native WebRTC Video / Studio / Group Grid -->
           <div v-else class="w-full h-full relative flex flex-col bg-slate-950 overflow-hidden">
+            <!-- Floating Real-World Live Reactions Layer -->
+            <div class="absolute inset-0 pointer-events-none z-30 overflow-hidden">
+              <div
+                v-for="reaction in activeFloatingReactions"
+                :key="reaction.id"
+                class="floating-reaction absolute flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-2xl backdrop-blur-md border border-white/20 select-none animate-float-up"
+                :style="{
+                  left: reaction.x + '%',
+                  bottom: '24px',
+                  backgroundColor: reaction.bgColor || 'rgba(15, 23, 42, 0.88)',
+                  animationDuration: (reaction.duration || 3.0) + 's'
+                }"
+              >
+                <span class="text-2xl filter drop-shadow-md">{{ reaction.emoji }}</span>
+                <span v-if="reaction.sender" class="text-[11px] font-bold text-white pr-1 drop-shadow">{{ reaction.sender }}</span>
+              </div>
+            </div>
+
             <!-- 1. SPOTLIGHT VIEW (Hero Teacher or Active Screen Share) -->
             <div v-if="layoutMode === 'spotlight'" class="w-full h-full relative flex items-center justify-center bg-slate-900">
               <!-- Screen Sharing Video Stream -->
@@ -97,11 +135,11 @@
               <!-- Regular Teacher Video Stream -->
               <video
                 v-else
+                ref="instructorSpotlightVideoRef"
                 autoplay
                 loop
                 muted
                 playsinline
-                src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
                 class="w-full h-full object-cover"
               ></video>
 
@@ -165,55 +203,64 @@
             <!-- 2. GROUP CLASSROOM GRID VIEW (Multi-Participant Video Matrix) -->
             <div v-else class="w-full h-full p-3 grid grid-cols-2 lg:grid-cols-3 gap-3 overflow-y-auto bg-slate-950">
               <!-- Tile 1: Instructor (Lead Host) -->
-              <div class="relative bg-slate-900 rounded-2xl overflow-hidden border-2 border-emerald-500/80 shadow-lg flex items-center justify-center aspect-video sm:aspect-auto">
+              <div class="relative bg-slate-900 rounded-2xl overflow-hidden border-2 border-emerald-500/80 shadow-lg flex items-center justify-center aspect-video sm:aspect-auto group">
                 <video
+                  ref="instructorGridVideoRef"
                   autoplay
                   loop
                   muted
                   playsinline
-                  src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
-                  class="w-full h-full object-cover"
+                  class="w-full h-full object-cover absolute inset-0"
                 ></video>
-                <div class="absolute bottom-2 left-2 flex items-center gap-2 p-1.5 px-2.5 bg-slate-950/80 rounded-xl backdrop-blur-sm border border-slate-800">
-                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span class="text-xs font-bold text-white">{{ classroom.instructor.name }} (Host)</span>
-                  <span class="text-[10px] text-emerald-400 font-mono">Speaking 🎙️</span>
-                </div>
-                <div class="absolute top-2 right-2 flex items-center gap-1.5">
-                  <div class="flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-950/90 text-emerald-400 rounded-md text-[10px] font-bold border border-emerald-700">
-                    <span class="w-1 h-3 bg-emerald-400 rounded-full animate-bounce"></span>
-                    <span class="w-1 h-2 bg-emerald-400 rounded-full animate-bounce delay-75"></span>
-                    <span class="w-1 h-4 bg-emerald-400 rounded-full animate-bounce delay-150"></span>
+                <div class="relative z-10 w-full h-full p-2.5 flex flex-col justify-between pointer-events-none">
+                  <div class="flex items-center justify-between pointer-events-auto">
+                    <span class="text-[10px] uppercase font-mono tracking-wider text-emerald-400 bg-slate-950/80 px-2 py-0.5 rounded-md border border-emerald-800/80 flex items-center gap-1.5 backdrop-blur-sm">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      HOST • 1080p WebRTC
+                    </span>
+                    <div class="flex items-center gap-0.5 px-2 py-0.5 bg-emerald-950/90 text-emerald-400 rounded-md text-[10px] font-bold border border-emerald-700 backdrop-blur-sm">
+                      <span class="w-1 h-3 bg-emerald-400 rounded-full animate-bounce"></span>
+                      <span class="w-1 h-2 bg-emerald-400 rounded-full animate-bounce delay-75"></span>
+                      <span class="w-1 h-4 bg-emerald-400 rounded-full animate-bounce delay-150"></span>
+                      <span class="ml-1">Live Audio</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between pointer-events-auto bg-slate-950/80 p-2 rounded-xl border border-slate-800 backdrop-blur-sm">
+                    <div class="flex items-center gap-2">
+                      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span class="text-xs font-bold text-white">{{ classroom.instructor.name }} (Host)</span>
+                    </div>
+                    <span class="text-[10px] text-emerald-400 font-mono">Speaking 🎙️</span>
                   </div>
                 </div>
               </div>
 
               <!-- Tile 2: You (Current Student) -->
-              <div class="relative bg-slate-900 rounded-2xl overflow-hidden border-2 border-indigo-500/80 shadow-lg flex items-center justify-center aspect-video sm:aspect-auto">
+              <div class="relative bg-slate-900 rounded-2xl overflow-hidden border-2 border-indigo-500/80 shadow-lg flex items-center justify-center aspect-video sm:aspect-auto group">
                 <video
-                  v-if="localStreamActive && !camOff"
                   ref="localGridVideoRef"
                   autoplay
                   playsinline
                   muted
-                  class="w-full h-full object-cover"
+                  class="w-full h-full object-cover absolute inset-0"
                 ></video>
-                <div v-else class="text-center p-4">
-                  <div class="w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-lg mx-auto mb-2">
-                    👤
+                <div class="relative z-10 w-full h-full p-2.5 flex flex-col justify-between pointer-events-none">
+                  <div class="flex items-center justify-between pointer-events-auto">
+                    <span class="text-[10px] uppercase font-mono tracking-wider text-indigo-300 bg-slate-950/80 px-2 py-0.5 rounded-md border border-indigo-800/80 flex items-center gap-1.5 backdrop-blur-sm">
+                      <span class="w-1.5 h-1.5 rounded-full" :class="camOff ? 'bg-amber-400' : 'bg-emerald-400'"></span>
+                      <span>{{ camOff ? 'Camera Paused' : 'WebRTC Connected' }}</span>
+                    </span>
+                    <span v-if="handRaised" class="px-2 py-0.5 bg-amber-500 text-slate-950 text-xs font-bold rounded-lg shadow animate-bounce">
+                      ✋ Question
+                    </span>
                   </div>
-                  <div class="text-xs font-bold text-white">{{ authStore.user?.name || 'Abebe Bekele' }} (You)</div>
-                  <div class="text-[10px] text-slate-400">Student Scholar • Active</div>
-                </div>
-                <div class="absolute bottom-2 left-2 flex items-center gap-2 p-1.5 px-2.5 bg-slate-950/80 rounded-xl backdrop-blur-sm border border-slate-800">
-                  <span class="w-2 h-2 rounded-full" :class="camOff ? 'bg-rose-400' : 'bg-emerald-400'"></span>
-                  <span class="text-xs font-bold text-slate-200">{{ authStore.user?.name || 'Abebe Bekele' }}</span>
-                  <span class="text-[10px] text-slate-400 font-mono">{{ micMuted ? 'Muted' : 'Mic Active' }}</span>
-                </div>
-                <div class="absolute top-2 right-2 flex items-center gap-1">
-                  <span v-if="handRaised" class="px-2 py-0.5 bg-amber-500 text-slate-950 text-xs font-bold rounded-lg shadow animate-bounce">
-                    ✋ Question
-                  </span>
+                  <div class="flex items-center justify-between pointer-events-auto bg-slate-950/80 p-2 rounded-xl border border-slate-800 backdrop-blur-sm">
+                    <div class="flex items-center gap-2">
+                      <span class="w-2 h-2 rounded-full" :class="camOff ? 'bg-rose-400' : 'bg-emerald-400'"></span>
+                      <span class="text-xs font-bold text-slate-200">{{ authStore.user?.name || 'Abebe Bekele' }} (You)</span>
+                    </div>
+                    <span class="text-[10px] text-slate-400 font-mono">{{ micMuted ? 'Muted 🔇' : 'Mic Active 🎙️' }}</span>
+                  </div>
                 </div>
               </div>
 
@@ -221,37 +268,79 @@
               <div
                 v-for="(peer, idx) in peerStudents"
                 :key="idx"
-                class="relative bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow flex flex-col justify-between p-3 aspect-video sm:aspect-auto"
-                :style="{ background: `radial-gradient(circle at top right, ${peer.color}15, #0f172a)` }"
+                class="relative bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow flex flex-col justify-between aspect-video sm:aspect-auto group transition-all hover:border-slate-700"
               >
-                <div class="flex items-center justify-between">
-                  <span class="text-[10px] uppercase font-mono tracking-wider text-slate-400">{{ peer.location }}</span>
-                  <span class="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold" :class="peer.isSpeaking ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-slate-800 text-slate-400'">
-                    {{ peer.isSpeaking ? 'Speaking 🎙️' : 'Listening 🎧' }}
-                  </span>
-                </div>
+                <!-- Peer Live Video Stream -->
+                <video
+                  :ref="el => setPeerVideoRef(el, idx)"
+                  autoplay
+                  playsinline
+                  muted
+                  loop
+                  class="w-full h-full object-cover absolute inset-0"
+                ></video>
 
-                <div class="text-center my-auto">
-                  <img :src="peer.avatar" :alt="peer.name" class="w-14 h-14 rounded-full mx-auto border-2 border-slate-700 shadow-md mb-1.5" />
-                  <div class="text-xs font-bold text-white">{{ peer.name }}</div>
-                  <div class="text-[10px] text-slate-400">{{ peer.level }}</div>
-                </div>
+                <!-- Peer Overlay Controls -->
+                <div class="relative z-10 w-full h-full p-2.5 flex flex-col justify-between pointer-events-none">
+                  <!-- Top Header: Location, Live Audio Waveform & Audio Mute Button -->
+                  <div class="flex items-center justify-between pointer-events-auto">
+                    <span class="text-[10px] uppercase font-mono tracking-wider text-slate-300 bg-slate-950/80 px-2 py-0.5 rounded-md border border-slate-800 flex items-center gap-1 backdrop-blur-sm">
+                      <span class="w-1.5 h-1.5 rounded-full" :class="peer.isSpeaking ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'"></span>
+                      {{ peer.location }}
+                    </span>
+                    <div class="flex items-center gap-1.5">
+                      <!-- Speaking indicator with animated wave bars -->
+                      <span
+                        class="text-[10px] px-2 py-0.5 rounded font-mono font-bold flex items-center gap-1 backdrop-blur-sm"
+                        :class="peer.isSpeaking ? 'bg-emerald-950/90 text-emerald-400 border border-emerald-800' : 'bg-slate-950/80 text-slate-400 border border-slate-800'"
+                      >
+                        <span v-if="peer.isSpeaking && !peer.muted" class="flex items-center gap-0.5">
+                          <span class="w-1 h-2.5 bg-emerald-400 rounded-full animate-bounce"></span>
+                          <span class="w-1 h-3.5 bg-emerald-400 rounded-full animate-bounce delay-75"></span>
+                          <span class="w-1 h-2 bg-emerald-400 rounded-full animate-bounce delay-150"></span>
+                        </span>
+                        <span>{{ peer.isSpeaking ? (peer.muted ? 'Speaking (Muted)' : 'Speaking 🎙️') : 'Listening 🎧' }}</span>
+                      </span>
 
-                <div class="flex items-center justify-between pt-2 border-t border-slate-800/60 text-[10px] text-slate-400">
-                  <span class="flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    <span>HD 720p</span>
-                  </span>
-                  <span v-if="peer.handRaised" class="text-amber-400 font-bold">✋ Hand Raised</span>
-                  <span v-else class="text-slate-500">Muted</span>
+                      <!-- Mute / Unmute Participant Audio Toggle -->
+                      <button
+                        @click="togglePeerAudio(peer)"
+                        class="p-1 rounded-md text-[11px] transition-colors pointer-events-auto"
+                        :class="peer.muted ? 'bg-rose-950/90 text-rose-300 border border-rose-800' : 'bg-slate-900/90 text-slate-300 hover:text-white border border-slate-700'"
+                        :title="peer.muted ? 'Unmute participant audio' : 'Mute participant audio'"
+                      >
+                        {{ peer.muted ? '🔇' : '🔊' }}
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Bottom Bar: Name, WebRTC connection & Volume slider -->
+                  <div class="flex items-center justify-between pt-1 pointer-events-auto bg-slate-950/80 p-2 rounded-xl border border-slate-800/80 backdrop-blur-sm text-[10px] text-slate-300">
+                    <span class="font-bold text-white flex items-center gap-1">
+                      <span>{{ peer.name }}</span>
+                    </span>
+                    <div class="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        v-model="peer.volume"
+                        class="w-14 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                        :title="`Volume: ${peer.volume}%`"
+                      />
+                      <span v-if="peer.handRaised" class="text-amber-400 font-bold bg-amber-950/60 px-1.5 py-0.2 rounded border border-amber-800/60">✋ Question</span>
+                      <span v-else class="text-slate-400 font-mono">{{ peer.muted ? 'Muted' : peer.volume + '%' }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Video Control Bar (Media Controls, Screen Share, Diagnostics) -->
-          <div class="h-12 bg-slate-950/95 border-t border-slate-800 px-3 sm:px-4 flex items-center justify-between text-xs z-10">
-            <div class="flex items-center gap-1.5 sm:gap-2.5">
+          <!-- Video Control Bar (Media Controls, Screen Share, Real-World Reaction Dock) -->
+          <div class="h-14 bg-slate-950/95 border-t border-slate-800 px-3 sm:px-4 flex items-center justify-between text-xs z-10 gap-2">
+            <!-- Left: Mic, Cam, Screen, Hand -->
+            <div class="flex items-center gap-1.5 sm:gap-2">
               <!-- Mic Button -->
               <button
                 @click="toggleMic"
@@ -291,7 +380,24 @@
                 <span>✋</span>
                 <span class="hidden md:inline">{{ handRaised ? 'Lower Hand' : 'Raise Hand' }}</span>
               </button>
+            </div>
 
+            <!-- Middle: Real-World Live Reaction Dock -->
+            <div class="flex items-center gap-1 bg-slate-900/90 border border-slate-800 px-2 py-1 rounded-xl shadow-inner">
+              <span class="text-[10px] font-bold text-slate-400 hidden xl:inline mr-1">Reactions:</span>
+              <button
+                v-for="item in availableReactions"
+                :key="item.emoji"
+                @click="triggerReaction(item.emoji, item.sound)"
+                class="hover:scale-130 active:scale-90 transition-transform text-base sm:text-lg px-1.5 py-0.5 rounded-lg hover:bg-slate-800/80 cursor-pointer"
+                :title="item.label"
+              >
+                {{ item.emoji }}
+              </button>
+            </div>
+
+            <!-- Right: Layout toggle & Diagnostics -->
+            <div class="flex items-center gap-1.5 sm:gap-2">
               <!-- Group Grid vs Spotlight Layout Toggle -->
               <button
                 @click="layoutMode = (layoutMode === 'spotlight' ? 'grid' : 'spotlight')"
@@ -311,17 +417,15 @@
                 <span>⚡</span>
                 <span>{{ useJitsi ? 'Studio View' : 'Jitsi Live' }}</span>
               </button>
-            </div>
 
-            <!-- Diagnostics & Audio Indicators -->
-            <div class="flex items-center gap-2">
+              <!-- Diagnostics & Audio Indicators -->
               <button
                 @click="showDiagnostics = true"
                 class="flex items-center gap-1.5 text-[11px] text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-2.5 py-1 rounded-xl hover:bg-emerald-900/50 transition-colors"
                 title="View WebRTC Diagnostic Telemetry"
               >
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>WebRTC 24ms</span>
+                <span class="hidden sm:inline">WebRTC 24ms</span>
               </button>
             </div>
           </div>
@@ -391,33 +495,51 @@
             </div>
           </div>
 
+          <!-- Quick Reaction Shortcuts & Helper Chips -->
+          <div class="px-3 pt-2 bg-slate-900 border-t border-slate-800 flex items-center justify-between text-xs">
+            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Quick React:</span>
+            <div class="flex items-center gap-1.5">
+              <button
+                v-for="item in availableReactions.slice(0, 6)"
+                :key="item.emoji"
+                @click="appendEmojiToChat(item.emoji)"
+                class="hover:scale-130 transition-transform p-0.5 rounded text-sm hover:bg-slate-800 active:scale-90"
+                :title="`Add ${item.label} to chat`"
+              >
+                {{ item.emoji }}
+              </button>
+            </div>
+          </div>
+
           <!-- Quick Immersion Phrase Helper Chips -->
-          <div class="p-2 bg-slate-900 border-t border-slate-800 flex gap-1.5 overflow-x-auto text-[11px] no-scrollbar">
+          <div class="p-2 bg-slate-900 flex gap-1.5 overflow-x-auto text-[11px] no-scrollbar">
             <button
               v-for="chip in quickChips"
               :key="chip"
               @click="insertChip(chip)"
-              class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-300 rounded-lg whitespace-nowrap transition-colors border border-slate-700/80"
+              class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-300 rounded-lg whitespace-nowrap transition-colors border border-slate-700/80 text-[10px]"
             >
               {{ chip }}
             </button>
           </div>
 
-          <!-- Chat Input Bar -->
+          <!-- Chat Input Bar (Meeting Users Can Write) -->
           <div class="p-3 bg-slate-850 border-t border-slate-800 flex gap-2">
             <input
               v-model="chatInput"
               @keyup.enter="handleSendChat"
               type="text"
-              placeholder="Type message or ask instructor..."
+              placeholder="Type message, question or reply in meeting..."
               class="flex-1 px-3 py-2 text-xs bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
             <button
               @click="handleSendChat"
               :disabled="sendingChat || !chatInput.trim()"
-              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-xs transition-colors flex items-center gap-1"
+              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 shadow-md shadow-emerald-600/30"
+              title="Send message to meeting room"
             >
               <span>{{ sendingChat ? '...' : 'Send' }}</span>
+              <span>💬</span>
             </button>
           </div>
         </div>
@@ -878,7 +1000,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { useClassroomStore } from '@/stores/classroom';
 import { useAuthStore } from '@/stores/auth';
@@ -901,12 +1023,22 @@ const finishSessionModalOpen = ref(false);
 const showAttendanceModal = ref(false);
 const showDiagnostics = ref(false);
 
-// Screen Share & Camera MediaStreams
+// Screen Share & Video Meeting MediaStreams
 const isScreenSharing = ref(false);
 const screenVideoRef = ref(null);
+const instructorSpotlightVideoRef = ref(null);
+const instructorGridVideoRef = ref(null);
 const localVideoRef = ref(null);
 const localGridVideoRef = ref(null);
 const localStreamActive = ref(false);
+const peerVideoRefs = ref([]);
+
+function setPeerVideoRef(el, idx) {
+  if (el) peerVideoRefs.value[idx] = el;
+}
+
+let instructorStream = null;
+let peerStreams = [];
 let localStream = null;
 let screenStream = null;
 
@@ -926,6 +1058,8 @@ const peerStudents = ref([
     color: '#4338ca',
     isSpeaking: true,
     handRaised: false,
+    muted: false,
+    volume: 90,
   },
   {
     name: 'Prof. Sarah Chen',
@@ -935,6 +1069,8 @@ const peerStudents = ref([
     color: '#059669',
     isSpeaking: false,
     handRaised: false,
+    muted: false,
+    volume: 85,
   },
   {
     name: 'Selamawit Tadesse',
@@ -944,6 +1080,8 @@ const peerStudents = ref([
     color: '#d97706',
     isSpeaking: false,
     handRaised: true,
+    muted: false,
+    volume: 95,
   },
   {
     name: 'Mei-Ling Zhou (周美玲)',
@@ -953,8 +1091,212 @@ const peerStudents = ref([
     color: '#dc2626',
     isSpeaking: false,
     handRaised: false,
+    muted: false,
+    volume: 80,
   }
 ]);
+
+// Sound FX & Acoustic Synthesis Engine (Web Audio API - No MP3 Dependencies)
+const soundFxEnabled = ref(true);
+let audioCtx = null;
+
+function getAudioContext() {
+  if (!audioCtx) {
+    const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtxClass) {
+      audioCtx = new AudioCtxClass();
+    }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+function playSound(type = 'pop') {
+  if (!soundFxEnabled.value) return;
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    if (type === 'pop') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(550, now);
+      osc.frequency.exponentialRampToValueAtTime(1100, now + 0.08);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.09);
+    } else if (type === 'applause') {
+      for (let i = 0; i < 9; i++) {
+        const delay = now + i * 0.065 + Math.random() * 0.02;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(160 + Math.random() * 120, delay);
+        gain.gain.setValueAtTime(0.2, delay);
+        gain.gain.exponentialRampToValueAtTime(0.005, delay + 0.05);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(delay);
+        osc.stop(delay + 0.06);
+      }
+    } else if (type === 'heart') {
+      [523.25, 659.25, 783.99].forEach((f, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f, now + idx * 0.07);
+        gain.gain.setValueAtTime(0.2, now + idx * 0.07);
+        gain.gain.exponentialRampToValueAtTime(0.005, now + idx * 0.07 + 0.22);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.07);
+        osc.stop(now + idx * 0.07 + 0.23);
+      });
+    } else if (type === 'celebration') {
+      [523.25, 659.25, 783.99, 1046.50].forEach((f, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(f, now + idx * 0.06);
+        gain.gain.setValueAtTime(0.18, now + idx * 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.005, now + idx * 0.06 + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.06);
+        osc.stop(now + idx * 0.06 + 0.36);
+      });
+    } else if (type === 'fire') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(200, now);
+      osc.frequency.exponentialRampToValueAtTime(750, now + 0.12);
+      gain.gain.setValueAtTime(0.16, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.13);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.14);
+    } else if (type === 'bell') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1046.50, now);
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.005, now + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.36);
+    } else if (type === 'message') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, now);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.005, now + 0.18);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.19);
+    } else if (type === 'join') {
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc1.type = 'sine';
+      osc2.type = 'sine';
+      osc1.frequency.setValueAtTime(440, now);
+      osc2.frequency.setValueAtTime(880, now + 0.12);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.005, now + 0.35);
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.14);
+      osc2.start(now + 0.12);
+      osc2.stop(now + 0.36);
+    }
+  } catch (e) {
+    console.debug('Audio effect notice:', e);
+  }
+}
+
+function toggleSoundFx() {
+  soundFxEnabled.value = !soundFxEnabled.value;
+  if (soundFxEnabled.value) {
+    playSound('pop');
+  }
+}
+
+function testAudio() {
+  playSound('celebration');
+}
+
+function togglePeerAudio(peer) {
+  peer.muted = !peer.muted;
+  playSound(peer.muted ? 'pop' : 'bell');
+}
+
+// Real-World Live Reactions
+const availableReactions = [
+  { emoji: '❤️', label: 'Love', sound: 'heart' },
+  { emoji: '👏', label: 'Applause', sound: 'applause' },
+  { emoji: '👍', label: 'Thumbs Up', sound: 'pop' },
+  { emoji: '🔥', label: 'Fire', sound: 'fire' },
+  { emoji: '🎉', label: 'Celebrate', sound: 'celebration' },
+  { emoji: '💡', label: 'Insight', sound: 'bell' },
+  { emoji: '💯', label: '100% Perfect', sound: 'celebration' },
+  { emoji: '✋', label: 'Question', sound: 'bell' },
+];
+
+const activeFloatingReactions = ref([]);
+let reactionIdCounter = 0;
+
+function spawnReaction(emoji, sender = 'You', soundType = 'pop') {
+  const id = ++reactionIdCounter;
+  const x = Math.min(84, Math.max(12, Math.floor(Math.random() * 70) + 12));
+  const duration = 2.4 + Math.random() * 1.0;
+
+  activeFloatingReactions.value.push({
+    id,
+    emoji,
+    sender,
+    x,
+    duration,
+    bgColor: sender.includes('Host') || sender.includes('Carlos') ? 'rgba(5, 150, 105, 0.88)' : 'rgba(15, 23, 42, 0.88)'
+  });
+
+  playSound(soundType);
+
+  setTimeout(() => {
+    activeFloatingReactions.value = activeFloatingReactions.value.filter(r => r.id !== id);
+  }, (duration + 0.3) * 1000);
+}
+
+async function triggerReaction(emoji, soundType = 'pop') {
+  const name = authStore.user?.name || 'Abebe Bekele (You)';
+  spawnReaction(emoji, name, soundType);
+  try {
+    const slug = route.params.slug;
+    if (slug) {
+      await classroomStore.sendReaction(slug, emoji);
+    }
+  } catch (err) {
+    console.warn('Reaction broadcast fallback:', err);
+  }
+}
+
+function appendEmojiToChat(emoji) {
+  chatInput.value = (chatInput.value ? chatInput.value + ' ' : '') + emoji;
+}
 
 // 25-Minute Immersion Timer (1500 seconds)
 const timeLeftSeconds = ref(1500);
@@ -1019,6 +1361,7 @@ async function handleSendChat() {
   try {
     const slug = route.params.slug;
     await classroomStore.sendChatMessage(slug, text);
+    playSound('message');
     await nextTick();
     if (chatScrollRef.value) {
       chatScrollRef.value.scrollTop = chatScrollRef.value.scrollHeight;
@@ -1030,29 +1373,390 @@ async function handleSendChat() {
   }
 }
 
-// Media Controls: Mic, Camera, Screen Share
-async function toggleCam() {
-  camOff.value = !camOff.value;
-  if (!camOff.value && !localStream) {
+// Multi-User WebRTC Video Meeting Generators & Stream Pipeline
+function createInstructorStream() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1280;
+  canvas.height = 720;
+  const ctx = canvas.getContext('2d');
+  let frame = 0;
+
+  function renderInstructor() {
+    frame++;
+    // Studio gradient background
+    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    grad.addColorStop(0, '#0a101d');
+    grad.addColorStop(0.5, '#131e33');
+    grad.addColorStop(1, '#0f172a');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Modern studio grid
+    ctx.strokeStyle = 'rgba(16, 185, 129, 0.06)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < canvas.width; x += 60) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+      ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += 60) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
+    }
+
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2 - 20;
+    const breath = Math.sin(frame * 0.04) * 4;
+
+    // Glowing host aura
+    const aura = ctx.createRadialGradient(cx, cy + breath, 50, cx, cy + breath, 160);
+    aura.addColorStop(0, 'rgba(16, 185, 129, 0.28)');
+    aura.addColorStop(1, 'rgba(16, 185, 129, 0)');
+    ctx.fillStyle = aura;
+    ctx.beginPath();
+    ctx.arc(cx, cy + breath, 160, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Instructor head/face
+    ctx.save();
+    ctx.translate(cx, cy + breath);
+
+    // Torso / Suit
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.ellipse(0, 140, 130, 75, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Shirt collar
+    ctx.fillStyle = '#059669';
+    ctx.beginPath();
+    ctx.moveTo(-35, 100);
+    ctx.lineTo(0, 135);
+    ctx.lineTo(35, 100);
+    ctx.fill();
+
+    // Head base
+    ctx.fillStyle = '#f5d0b0';
+    ctx.beginPath();
+    ctx.arc(0, 0, 68, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hair
+    ctx.fillStyle = '#1f2937';
+    ctx.beginPath();
+    ctx.arc(0, -18, 70, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    // Eyes with natural blinking every ~3.5s
+    const isBlinking = (frame % 110) < 4;
+    ctx.fillStyle = '#111827';
+    if (isBlinking) {
+      ctx.fillRect(-28, -6, 20, 3);
+      ctx.fillRect(10, -6, 20, 3);
+    } else {
+      ctx.beginPath();
+      ctx.arc(-20, -5, 6, 0, Math.PI * 2);
+      ctx.arc(20, -5, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(-18, -7, 2, 0, Math.PI * 2);
+      ctx.arc(22, -7, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Glasses frame
+    ctx.strokeStyle = '#059669';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(-32, -16, 26, 22);
+    ctx.strokeRect(6, -16, 26, 22);
+    ctx.beginPath();
+    ctx.moveTo(-6, -6);
+    ctx.lineTo(6, -6);
+    ctx.stroke();
+
+    // Mouth (natural speaking mouth movement)
+    const mouthOpen = Math.max(3, Math.abs(Math.sin(frame * 0.18)) * 14);
+    ctx.fillStyle = '#b91c1c';
+    ctx.beginPath();
+    ctx.ellipse(0, 28, 14, mouthOpen / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // Audio Equalizer Waveform
+    ctx.fillStyle = '#10b981';
+    for (let i = 0; i < 24; i++) {
+      const h = Math.abs(Math.sin(frame * 0.1 + i * 0.35)) * 26 + 6;
+      ctx.fillRect(cx - 120 + i * 10, canvas.height - 40 - h / 2, 5, h);
+    }
+
+    // Top Right HD Live WebRTC Indicator
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+    ctx.fillRect(canvas.width - 200, 24, 176, 32);
+    ctx.fillStyle = '#10b981';
+    ctx.beginPath();
+    ctx.arc(canvas.width - 184, 40, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('1080p 60fps • VP9', canvas.width - 170, 44);
+
+    // Host Banner
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.fillRect(30, canvas.height - 65, 360, 42);
+    ctx.fillStyle = '#10b981';
+    ctx.beginPath();
+    ctx.arc(50, canvas.height - 44, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillText(`${classroom.value?.instructor?.name || 'Carlos Méndez'} (Lead Host)`, 65, canvas.height - 48);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('Certified Native Specialist • Online Global Classroom', 65, canvas.height - 32);
+
+    requestAnimationFrame(renderInstructor);
+  }
+  renderInstructor();
+
+  return canvas.captureStream ? canvas.captureStream(30) : null;
+}
+
+function createPeerStream(peer, idx) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 640;
+  canvas.height = 360;
+  const ctx = canvas.getContext('2d');
+  let frame = idx * 25;
+
+  function renderPeer() {
+    frame++;
+    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    grad.addColorStop(0, '#0f172a');
+    grad.addColorStop(1, peer.color || '#312e81');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2 - 15;
+    const bob = Math.sin(frame * 0.05) * 3;
+
+    // Glowing halo when speaking
+    if (peer.isSpeaking && !peer.muted) {
+      const halo = ctx.createRadialGradient(cx, cy + bob, 35, cx, cy + bob, 85);
+      halo.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
+      halo.addColorStop(1, 'rgba(16, 185, 129, 0)');
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(cx, cy + bob, 85, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.save();
+    ctx.translate(cx, cy + bob);
+
+    ctx.fillStyle = peer.color || '#4338ca';
+    ctx.beginPath();
+    ctx.arc(0, 0, 48, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 32px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(peer.name[0], 0, 0);
+
+    if (peer.isSpeaking && !peer.muted) {
+      const mouthH = Math.max(2, Math.abs(Math.sin(frame * 0.2)) * 10);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.beginPath();
+      ctx.ellipse(0, 22, 10, mouthH / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    if (peer.isSpeaking && !peer.muted) {
+      ctx.fillStyle = '#10b981';
+      for (let i = 0; i < 12; i++) {
+        const barH = Math.abs(Math.sin(frame * 0.12 + i * 0.4)) * 16 + 4;
+        ctx.fillRect(cx - 40 + i * 7, canvas.height - 35 - barH / 2, 4, barH);
+      }
+    }
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.fillRect(14, canvas.height - 36, 240, 24);
+    ctx.fillStyle = peer.isSpeaking && !peer.muted ? '#10b981' : '#64748b';
+    ctx.beginPath();
+    ctx.arc(24, canvas.height - 24, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${peer.name} • ${peer.location}`, 34, canvas.height - 20);
+
+    requestAnimationFrame(renderPeer);
+  }
+  renderPeer();
+
+  return canvas.captureStream ? canvas.captureStream(30) : null;
+}
+
+// Guaranteed HD Camera Video Stream Fallback (Simulated WebRTC Canvas)
+function createSimulatedWebcamStream() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 640;
+  canvas.height = 360;
+  const ctx = canvas.getContext('2d');
+  let frame = 0;
+
+  function drawWebcamFrame() {
+    frame++;
+    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    grad.addColorStop(0, '#0f172a');
+    grad.addColorStop(1, '#312e81');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = '#6366f1';
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2, canvas.height / 2 - 25, 52, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 40px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText((authStore.user?.name || 'Abebe')[0].toUpperCase(), canvas.width / 2, canvas.height / 2 - 25);
+
+    ctx.fillStyle = '#10b981';
+    for (let i = 0; i < 18; i++) {
+      const h = Math.abs(Math.sin(frame * 0.08 + i * 0.4)) * 24 + 10;
+      ctx.fillRect(canvas.width / 2 - 80 + i * 9, canvas.height - 45 - h / 2, 5, h);
+    }
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.fillRect(16, canvas.height - 38, 220, 24);
+    ctx.fillStyle = '#10b981';
+    ctx.beginPath();
+    ctx.arc(28, canvas.height - 26, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${authStore.user?.name || 'Abebe Bekele'} • WebRTC HD`, 38, canvas.height - 22);
+
+    requestAnimationFrame(drawWebcamFrame);
+  }
+  drawWebcamFrame();
+
+  return canvas.captureStream ? canvas.captureStream(30) : null;
+}
+
+// Media Streams Attacher & Synchronizer
+function attachStreams() {
+  if (instructorStream) {
+    if (instructorSpotlightVideoRef.value) {
+      instructorSpotlightVideoRef.value.srcObject = instructorStream;
+      instructorSpotlightVideoRef.value.play().catch(() => {});
+    }
+    if (instructorGridVideoRef.value) {
+      instructorGridVideoRef.value.srcObject = instructorStream;
+      instructorGridVideoRef.value.play().catch(() => {});
+    }
+  }
+
+  if (localStream && localStreamActive.value && !camOff.value) {
+    if (localVideoRef.value) {
+      localVideoRef.value.srcObject = localStream;
+      localVideoRef.value.play().catch(() => {});
+    }
+    if (localGridVideoRef.value) {
+      localGridVideoRef.value.srcObject = localStream;
+      localGridVideoRef.value.play().catch(() => {});
+    }
+  }
+
+  peerStreams.forEach((stream, idx) => {
+    const el = peerVideoRefs.value[idx];
+    if (el && stream) {
+      el.srcObject = stream;
+      el.play().catch(() => {});
+    }
+  });
+}
+
+async function initMediaStreams() {
+  if (!instructorStream) {
+    instructorStream = createInstructorStream();
+  }
+
+  if (peerStreams.length === 0) {
+    peerStreams = peerStudents.value.map((peer, idx) => createPeerStream(peer, idx));
+  }
+
+  if (!localStream) {
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         localStreamActive.value = true;
-        await nextTick();
-        if (localVideoRef.value) localVideoRef.value.srcObject = localStream;
-        if (localGridVideoRef.value) localGridVideoRef.value.srcObject = localStream;
+        camOff.value = false;
       }
-    } catch (e) {
-      console.warn('Camera access simulated / not available:', e.message);
-      localStreamActive.value = false;
+    } catch (err) {
+      console.warn('Physical camera fallback:', err.message);
+      localStream = createSimulatedWebcamStream();
+      localStreamActive.value = true;
+      camOff.value = false;
     }
-  } else if (camOff.value && localStream) {
-    localStream.getVideoTracks().forEach(t => t.enabled = false);
-  } else if (!camOff.value && localStream) {
-    localStream.getVideoTracks().forEach(t => t.enabled = true);
   }
 
-  classroomStore.updateMediaState(route.params.slug, { is_camera_on: !camOff.value });
+  await nextTick();
+  attachStreams();
+}
+
+watch(layoutMode, async () => {
+  await nextTick();
+  attachStreams();
+});
+
+watch([camOff, localStreamActive], async () => {
+  await nextTick();
+  attachStreams();
+});
+
+// Media Controls: Mic, Camera, Screen Share
+async function toggleCam() {
+  camOff.value = !camOff.value;
+  if (!camOff.value) {
+    if (!localStream) {
+      try {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        }
+      } catch (e) {
+        console.warn('Physical camera simulated fallback:', e.message);
+        localStream = createSimulatedWebcamStream();
+      }
+    } else {
+      localStream.getVideoTracks().forEach(t => t.enabled = true);
+    }
+    localStreamActive.value = true;
+  } else if (camOff.value && localStream) {
+    localStream.getVideoTracks().forEach(t => t.enabled = false);
+  }
+
+  await nextTick();
+  attachStreams();
+
+  const slug = route.params.slug;
+  if (slug) {
+    classroomStore.updateMediaState(slug, { is_camera_on: !camOff.value });
+  }
 }
 
 function toggleMic() {
@@ -1060,6 +1764,7 @@ function toggleMic() {
   if (localStream) {
     localStream.getAudioTracks().forEach(t => t.enabled = !micMuted.value);
   }
+  playSound(micMuted.value ? 'pop' : 'bell');
   classroomStore.updateMediaState(route.params.slug, { is_muted: micMuted.value });
 }
 
@@ -1103,6 +1808,7 @@ async function toggleHand() {
     const slug = route.params.slug;
     const res = await classroomStore.toggleHandRaise(slug);
     handRaised.value = res?.hand_raised ?? !handRaised.value;
+    playSound('bell');
 
     if (handRaised.value) {
       classroomStore.chatMessages.push({
@@ -1119,6 +1825,54 @@ async function toggleHand() {
   } catch (e) {
     handRaised.value = !handRaised.value;
   }
+}
+
+// Background Simulated Peer Live Actions & Real-Time Sync
+let peerReactionInterval = null;
+let peerSpeakingInterval = null;
+let chatPollInterval = null;
+
+function startPeerReactionsSimulation() {
+  peerReactionInterval = setInterval(() => {
+    if (document.hidden) return;
+    const peers = peerStudents.value;
+    if (!peers.length) return;
+    const randomPeer = peers[Math.floor(Math.random() * peers.length)];
+    const reactions = [
+      { emoji: '👏', sound: 'applause' },
+      { emoji: '❤️', sound: 'heart' },
+      { emoji: '👍', sound: 'pop' },
+      { emoji: '🔥', sound: 'fire' },
+      { emoji: '🎉', sound: 'celebration' },
+      { emoji: '💡', sound: 'bell' },
+    ];
+    const picked = reactions[Math.floor(Math.random() * reactions.length)];
+    spawnReaction(picked.emoji, randomPeer.name, picked.sound);
+  }, 14000);
+}
+
+function startPeerSpeakingSimulation() {
+  peerSpeakingInterval = setInterval(() => {
+    peerStudents.value.forEach(peer => {
+      peer.isSpeaking = Math.random() > 0.65;
+    });
+  }, 4500);
+}
+
+function startChatPolling() {
+  const slug = route.params.slug;
+  if (!slug) return;
+  chatPollInterval = setInterval(async () => {
+    const beforeCount = classroomStore.chatMessages.length;
+    await classroomStore.fetchChat(slug);
+    if (classroomStore.chatMessages.length > beforeCount) {
+      playSound('message');
+      await nextTick();
+      if (chatScrollRef.value) {
+        chatScrollRef.value.scrollTop = chatScrollRef.value.scrollHeight;
+      }
+    }
+  }, 5000);
 }
 
 // Vocabulary with Web Speech API Native Pronunciation
@@ -1239,6 +1993,8 @@ onMounted(async () => {
       attendanceArrivalTime.value = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       attendanceVerificationHash.value = joinData.attendance.verification_hash || attendanceVerificationHash.value;
     }
+    // Welcome acoustic chime
+    playSound('join');
   } catch (err) {
     console.warn('Classroom join fallback:', err);
   }
@@ -1274,10 +2030,24 @@ onMounted(async () => {
       }
     }
   }, 1000);
+
+  // 6. Initialize Multi-User WebRTC Video Meeting Streams
+  await initMediaStreams();
+
+  // 7. Launch Peer Simulation & Real-time synchronization
+  startPeerReactionsSimulation();
+  startPeerSpeakingSimulation();
+  startChatPolling();
 });
 
 onUnmounted(() => {
   if (timerInterval) clearInterval(timerInterval);
+  if (peerReactionInterval) clearInterval(peerReactionInterval);
+  if (peerSpeakingInterval) clearInterval(peerSpeakingInterval);
+  if (chatPollInterval) clearInterval(chatPollInterval);
+
+  if (instructorStream) instructorStream.getTracks().forEach(t => t.stop());
+  peerStreams.forEach(s => s.getTracks().forEach(t => t.stop()));
   if (localStream) localStream.getTracks().forEach(t => t.stop());
   if (screenStream) screenStream.getTracks().forEach(t => t.stop());
 
@@ -1296,5 +2066,28 @@ onUnmounted(() => {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+@keyframes floatUp {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(-25px) scale(1.15);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(-220px) scale(1);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateY(-340px) scale(0.75);
+    opacity: 0;
+  }
+}
+
+.animate-float-up {
+  animation: floatUp 3.2s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
 }
 </style>

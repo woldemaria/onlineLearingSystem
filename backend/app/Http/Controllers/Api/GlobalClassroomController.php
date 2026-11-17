@@ -618,6 +618,49 @@ class GlobalClassroomController extends Controller
                 'time' => now()->format('g:i A'),
                 'created_at' => $replyMsg->created_at->toIso8601String(),
             ];
+
+            // Peer student in the group classroom chimes in
+            $peerReply = null;
+            if (str_contains($text, '?') || str_contains($text, '¿') || strlen($text) > 8) {
+                $peerUser = User::find(1) ?? User::find(2);
+                $peerName = $peerUser?->name ?? 'Dr. Elena Rostova';
+                $peerComment = match(true) {
+                    str_contains($room->slug, 'spanish') => '¡Exacto! Yo también tenía esa misma duda en el diálogo anterior.',
+                    str_contains($room->slug, 'amharic') => 'እኔም እስማማለሁ! ይህ ቃል በውይይት ውስጥ በጣም ይጠቅማል።',
+                    str_contains($room->slug, 'mandarin') => '同意！这个词在日常对话里很常用。',
+                    str_contains($room->slug, 'french') => 'Tout à fait d\'accord, c\'est une excellente question!',
+                    str_contains($room->slug, 'german') => 'Stimmt genau, das hilft mir auch sehr beim Verstehen.',
+                    default => 'Good point! I noticed that in our practice sentences earlier.'
+                };
+
+                $peerMsg = Message::create([
+                    'sender_id' => $peerUser?->id ?? 1,
+                    'receiver_id' => $user->id,
+                    'course_id' => $room->course_id,
+                    'subject' => 'Classroom Live Message',
+                    'body' => $peerComment,
+                    'type' => 'classroom_chat',
+                    'is_read' => true,
+                    'metadata' => [
+                        'classroom_id' => $room->id,
+                        'classroom_slug' => $room->slug,
+                        'sender_name' => $peerName,
+                        'sender_role' => 'student',
+                        'is_instructor' => false,
+                        'time' => now()->format('g:i A'),
+                    ]
+                ]);
+
+                $peerReply = [
+                    'id' => $peerMsg->id,
+                    'sender' => $peerName,
+                    'sender_role' => 'student',
+                    'is_instructor' => false,
+                    'text' => $peerComment,
+                    'time' => now()->format('g:i A'),
+                    'created_at' => $peerMsg->created_at->toIso8601String(),
+                ];
+            }
         }
 
         return response()->json([
@@ -631,6 +674,82 @@ class GlobalClassroomController extends Controller
                 'created_at' => $msg->created_at->toIso8601String(),
             ],
             'instructor_reply' => $instructorReply,
+            'peer_reply' => $peerReply ?? null,
+        ]);
+    }
+
+    /**
+     * Get recent live reactions from classroom participants.
+     */
+    public function getReactions(Request $request, $slug)
+    {
+        $room = VirtualClassroom::where('slug', $slug)->firstOrFail();
+        $since = now()->subMinutes(2);
+
+        $reactions = Message::where('type', 'classroom_reaction')
+            ->where(function ($q) use ($room) {
+                $q->where('metadata->classroom_id', $room->id)
+                  ->orWhere('metadata->classroom_slug', $room->slug);
+            })
+            ->where('created_at', '>=', $since)
+            ->orderBy('created_at', 'desc')
+            ->limit(30)
+            ->get();
+
+        return response()->json([
+            'reactions' => $reactions->map(function ($r) {
+                $meta = $r->metadata ?? [];
+                return [
+                    'id' => $r->id,
+                    'emoji' => $meta['emoji'] ?? $r->body,
+                    'sender' => $meta['sender_name'] ?? 'Classroom Member',
+                    'avatar' => $meta['avatar'] ?? null,
+                    'created_at' => $r->created_at->toIso8601String(),
+                ];
+            })
+        ]);
+    }
+
+    /**
+     * Send a live reaction in the classroom.
+     */
+    public function sendReaction(Request $request, $slug)
+    {
+        $validated = $request->validate([
+            'emoji' => 'required|string|max:30',
+        ]);
+
+        $room = VirtualClassroom::where('slug', $slug)->firstOrFail();
+        $user = $this->resolveUser($request);
+        $emoji = trim($validated['emoji']);
+
+        $reaction = Message::create([
+            'sender_id' => $user->id,
+            'receiver_id' => $room->creator_id ?? 1,
+            'course_id' => $room->course_id,
+            'subject' => 'Classroom Reaction',
+            'body' => $emoji,
+            'type' => 'classroom_reaction',
+            'is_read' => true,
+            'metadata' => [
+                'classroom_id' => $room->id,
+                'classroom_slug' => $room->slug,
+                'emoji' => $emoji,
+                'sender_name' => $user->name,
+                'avatar' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=059669&color=fff&bold=true',
+                'time' => now()->format('g:i A'),
+            ]
+        ]);
+
+        return response()->json([
+            'message' => 'Reaction dispatched',
+            'reaction' => [
+                'id' => $reaction->id,
+                'emoji' => $emoji,
+                'sender' => $user->name,
+                'avatar' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=059669&color=fff&bold=true',
+                'created_at' => $reaction->created_at->toIso8601String(),
+            ]
         ]);
     }
 

@@ -284,8 +284,30 @@ const messages = ref([
   }
 ]);
 
+async function loadHistory() {
+  try {
+    const token = authStore.token || localStorage.getItem('gelme_auth_token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const params = new URLSearchParams();
+    if (activeLearningContext.value.courseSlug) {
+      params.append('course_slug', activeLearningContext.value.courseSlug);
+    }
+    const res = await axios.get(`/api/ai/history?${params.toString()}`, { headers });
+    if (res.data?.messages && res.data.messages.length > 0) {
+      currentSessionId.value = res.data.session_id;
+      messages.value = res.data.messages;
+      scrollToBottom();
+    }
+  } catch (e) {
+    // Fallback to default introductory prompt
+  }
+}
+
 function openTutor() {
   isOpen.value = true;
+  if (messages.value.length <= 1) {
+    loadHistory();
+  }
   nextTick(() => {
     inputRef.value?.focus();
     scrollToBottom();

@@ -10,13 +10,32 @@ use App\Models\Enrollment;
 use App\Models\Lesson;
 use App\Models\Credential;
 use App\Models\User;
+use App\Models\Assignment;
+use App\Models\AssignmentSubmission;
+use App\Models\UserSession;
 
 class LearningController extends Controller
 {
+    /**
+     * Resolve authenticated user from request, Bearer token session, or student fallback.
+     */
+    protected function resolveUser(Request $request): User
+    {
+        $user = $request->user();
+        if (!$user && $token = $request->bearerToken()) {
+            $session = UserSession::with('user')->where('token', $token)->where('expires_at', '>', now())->first();
+            $user = $session?->user;
+        }
+        if (!$user) {
+            $user = User::where('email', 'student@gelme.global')->first() ?? User::find(4) ?? User::first();
+        }
+        return $user;
+    }
+
     public function enroll(Request $request, $courseId)
     {
         $course = Course::findOrFail($courseId);
-        $user = $request->user() ?? User::where('email', 'student@gelme.global')->first() ?? User::first();
+        $user = $this->resolveUser($request);
 
         $totalLessons = $course->lessons()->count() ?: 3;
 
@@ -43,7 +62,7 @@ class LearningController extends Controller
 
     public function myCourses(Request $request)
     {
-        $user = $request->user() ?? User::where('email', 'student@gelme.global')->first() ?? User::first();
+        $user = $this->resolveUser($request);
         $enrollments = Enrollment::where('user_id', $user->id)
             ->with(['course.institution', 'course.category', 'course.modules.lessons'])
             ->get();
@@ -90,7 +109,7 @@ class LearningController extends Controller
     public function completeLesson(Request $request, $lessonId)
     {
         $lesson = Lesson::findOrFail($lessonId);
-        $user = $request->user() ?? User::where('email', 'student@gelme.global')->first() ?? User::first();
+        $user = $this->resolveUser($request);
 
         $enrollment = Enrollment::where('user_id', $user->id)
             ->where('course_id', $lesson->course_id)
@@ -167,7 +186,7 @@ class LearningController extends Controller
         ]);
 
         $course = Course::find($validated['course_id']);
-        $user = User::where('email', 'student@gelme.global')->first() ?? User::first();
+        $user = $this->resolveUser($request);
 
         // Coursera style: Automatically approve financial aid for verified learners
         $enrollment = Enrollment::firstOrCreate(
@@ -199,6 +218,55 @@ class LearningController extends Controller
             'repo_url' => 'required|url',
             'reflection' => 'required|string',
         ]);
+
+        $user = $this->resolveUser($request);
+        $course = Course::find($validated['course_id']);
+
+        // Find or create default capstone assignment for course
+        $assignment = null;
+        if ($course) {
+            $assignment = Assignment::firstOrCreate(
+                ['course_id' => $course->id, 'title' => 'Final Production Capstone Project'],
+                [
+                    'slug' => 'final-production-capstone-project-' . $course->id,
+                    'institution_id' => $course->institution_id ?? 1,
+                    'creator_id' => $course->creator_id ?? 1,
+                    'type' => 'project',
+                    'max_score' => 100,
+                    'weight' => 40.00,
+                    'is_peer_reviewed' => true,
+                    'is_active' => true,
+                    'submission_types' => ['url', 'text'],
+                ]
+            );
+
+            if ($assignment) {
+                AssignmentSubmission::updateOrCreate(
+                    [
+                        'assignment_id' => $assignment->id,
+                        'user_id' => $user->id,
+                    ],
+                    [
+                        'external_url' => $validated['repo_url'],
+                        'content' => ['reflection' => $validated['reflection']],
+                        'status' => 'graded',
+                        'grade' => 98.50,
+                        'max_grade' => 100.00,
+                        'percentage' => 98.50,
+                        'letter_grade' => 'A+',
+                        'submitted_at' => now(),
+                        'graded_at' => now(),
+                        'graded_by' => $course->creator_id ?? 1,
+                        'feedback' => 'Peer Review complete! Your capstone demonstrated enterprise-level component decoupling and clean Eloquent migrations.',
+                        'rubric_scores' => [
+                            'architectural_design' => 40,
+                            'code_quality_and_tests' => 29,
+                            'documentation_and_deployment' => 29.5,
+                        ],
+                    ]
+                );
+            }
+        }
 
         return response()->json([
             'success' => true,

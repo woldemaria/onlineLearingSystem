@@ -2,6 +2,23 @@
   <div class="min-h-screen">
     <!-- Hero Section -->
     <section class="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-indigo-950 text-white pt-20 pb-28">
+      <!-- Interactive WebGL2 GridScan Background -->
+      <div class="absolute inset-0 z-0 opacity-75 pointer-events-auto">
+        <GridScan
+          :cells="9"
+          :scan-duration="3.0"
+          :scan-delay="1.4"
+          :scan-color="'#38bdf8'"
+          :lines-color="'#334155'"
+          :depth="3.5"
+          :glow="0.85"
+          :parallax="1.2"
+          :reflection="0.35"
+          :shading="0.65"
+          :interactive="true"
+        />
+      </div>
+
       <!-- Glow Gradients -->
       <div class="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
       <div class="absolute top-1/3 right-1/4 w-96 h-96 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none"></div>
@@ -329,6 +346,9 @@
       </div>
     </section>
 
+    <!-- What People Are Saying (Community Social Proof & Learner Stories) -->
+    <WhatPeopleAreSaying />
+
     <!-- Verifiable Credential Trust Banner (Coursera / edX) -->
     <section class="py-16 bg-white border-t border-slate-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -377,6 +397,8 @@ import { useRouter } from 'vue-router';
 import { useCourseStore } from '@/stores/courses';
 import { useClassroomStore } from '@/stores/classroom';
 import { useCartStore } from '@/stores/cart';
+import GridScan from '@/components/common/GridScan';
+import WhatPeopleAreSaying from '@/components/home/WhatPeopleAreSaying.vue';
 
 const router = useRouter();
 const courseStore = useCourseStore();

@@ -28,6 +28,10 @@ Route::get('/courses', [CourseCatalogController::class, 'index']);
 Route::get('/courses/{slug}', [CourseCatalogController::class, 'show']);
 Route::get('/categories', [CourseCatalogController::class, 'categories']);
 Route::get('/institutions', [CourseCatalogController::class, 'institutions']);
+Route::get('/testimonials', [CourseCatalogController::class, 'getTestimonials']);
+Route::get('/live-users', [CourseCatalogController::class, 'getLiveUsers']);
+Route::post('/testimonials', [CourseCatalogController::class, 'submitTestimonial']);
+Route::post('/testimonials/{id}/helpful', [CourseCatalogController::class, 'voteHelpfulTestimonial']);
 
 // Learning, Progress & Coursera Financial Aid
 Route::middleware('api.auth')->group(function () {
@@ -47,6 +51,8 @@ Route::post('/classrooms/{slug}/leave', [GlobalClassroomController::class, 'leav
 Route::get('/classrooms/{slug}/attendance', [GlobalClassroomController::class, 'attendance']);
 Route::get('/classrooms/{slug}/chat', [GlobalClassroomController::class, 'getChat']);
 Route::post('/classrooms/{slug}/chat', [GlobalClassroomController::class, 'sendChat']);
+Route::get('/classrooms/{slug}/reactions', [GlobalClassroomController::class, 'getReactions']);
+Route::post('/classrooms/{slug}/reactions', [GlobalClassroomController::class, 'sendReaction']);
 Route::post('/classrooms/{slug}/hand-raise', [GlobalClassroomController::class, 'toggleHandRaise']);
 Route::post('/classrooms/{slug}/media-state', [GlobalClassroomController::class, 'updateMediaState']);
 Route::post('/classrooms/book', [GlobalClassroomController::class, 'book']);

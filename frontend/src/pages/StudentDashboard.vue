@@ -1,6 +1,26 @@
 <template>
   <div class="min-h-screen bg-slate-50 py-10">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Unauthenticated State Banner if accessed without active credentials -->
+      <div
+        v-if="!authStore.isAuthenticated"
+        class="mb-8 p-6 rounded-3xl bg-amber-50 border border-amber-200 text-amber-900 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm"
+      >
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">🔒</span>
+          <div>
+            <h3 class="font-bold text-sm">Sign in required for personalized My Learning data</h3>
+            <p class="text-xs text-amber-700">You are currently browsing the dashboard preview. Sign in to sync your verified courses, quiz progress, and live classroom seats.</p>
+          </div>
+        </div>
+        <router-link
+          to="/login?redirect=/my-learning"
+          class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-colors whitespace-nowrap shadow-sm"
+        >
+          Sign In to My Learning →
+        </router-link>
+      </div>
+
       <!-- Profile Header -->
       <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm mb-10 flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
         <div class="flex items-center gap-5">
@@ -594,7 +614,9 @@ function printModal() {
 }
 
 onMounted(() => {
-  courseStore.fetchMyLearning();
+  if (authStore.isAuthenticated) {
+    courseStore.fetchMyLearning();
+  }
   classroomStore.fetchClassrooms();
 });
 </script>

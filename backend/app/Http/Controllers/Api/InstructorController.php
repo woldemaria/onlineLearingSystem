@@ -72,7 +72,7 @@ class InstructorController extends Controller
     {
         $request->validate([
             'file' => 'required|file|max:512000', // up to 500MB
-            'type' => 'nullable|string|in:video,document,image,auto',
+            'type' => 'nullable|string|in:video,document,image,auto,archive,audio,material',
         ]);
 
         $file = $request->file('file');
@@ -83,19 +83,25 @@ class InstructorController extends Controller
 
         // Determine media type
         $type = $request->type ?? 'auto';
-        if ($type === 'auto') {
-            if (str_starts_with($mime, 'video/') || in_array($extension, ['mp4', 'webm', 'mov', 'm4v', 'mkv'])) {
+        if ($type === 'auto' || $type === 'material') {
+            if (str_starts_with($mime, 'video/') || in_array($extension, ['mp4', 'webm', 'mov', 'm4v', 'mkv', 'avi', 'wmv', 'flv'])) {
                 $type = 'video';
-            } elseif ($mime === 'application/pdf' || in_array($extension, ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'txt'])) {
-                $type = 'document';
-            } else {
+            } elseif (in_array($extension, ['zip', 'tar', 'gz', '7z', 'rar', 'bz2'])) {
+                $type = 'archive';
+            } elseif (str_starts_with($mime, 'audio/') || in_array($extension, ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'])) {
+                $type = 'audio';
+            } elseif (str_starts_with($mime, 'image/') || in_array($extension, ['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif'])) {
                 $type = 'image';
+            } else {
+                $type = 'document';
             }
         }
 
         $folder = match ($type) {
             'video' => 'courses/videos',
-            'document' => 'courses/materials',
+            'document', 'material' => 'courses/materials',
+            'archive' => 'courses/code_archives',
+            'audio' => 'courses/audio',
             default => 'courses/thumbnails',
         };
 
@@ -103,7 +109,12 @@ class InstructorController extends Controller
         $path = $file->store($folder, 'public');
         $publicUrl = '/storage/' . $path;
 
-        $userId = $request->user()?->id ?? 1;
+        $user = $request->user();
+        if (!$user && $token = $request->bearerToken()) {
+            $session = \App\Models\UserSession::with('user')->where('token', $token)->where('expires_at', '>', now())->first();
+            $user = $session?->user;
+        }
+        $userId = $user?->id ?? 1;
 
         $media = Media::create([
             'user_id' => $userId,
@@ -127,6 +138,7 @@ class InstructorController extends Controller
             'media_id' => $media->id,
             'type' => $type,
             'file_name' => $originalName,
+            'extension' => $extension,
             'mime_type' => $mime,
             'size' => $size,
             'size_formatted' => round($size / (1024 * 1024), 2) . ' MB',
@@ -344,6 +356,11 @@ class InstructorController extends Controller
         $user = $request->user();
         if (!$user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        if ($user->role !== 'admin') {
+            $user->role = 'instructor';
+            $user->save();
         }
 
         $instructor = Instructor::firstOrCreate([

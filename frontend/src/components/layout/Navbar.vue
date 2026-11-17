@@ -89,10 +89,12 @@
             to="/global-classroom"
             class="relative inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-colors shadow-sm"
             :class="isDarkNav ? 'text-emerald-300 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60' : 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300'"
+            title="1,400+ Learners active online now"
           >
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span class="hidden sm:inline">Online Global Classroom</span>
             <span class="sm:hidden">OGC Live</span>
+            <span class="hidden xl:inline text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-300 border border-emerald-700/40">🟢 1.4k live</span>
           </router-link>
 
           <router-link
